@@ -184,6 +184,8 @@ Every error from the server also carries a `remedy` field — it says the same t
 
 - Never call a tool that is not in `tools/list` (there is no `snake_evolve_revise_proposal`).
 - Never reach the server through Bash / PowerShell / curl / a script — only through the MCP tools themselves.
+- Never hand the tool calls to a subagent / Agent / Task — make every call yourself, in this conversation, so every
+  id, ref and gate stays in front of the user (a delegated call loses them and the next step starts from a guess).
 - Never ask the user to install anything while the `mcp__chimpvibe__*` tools are in your tool list.
 - Never pass `sessionId`, a made-up `baseRef`, a made-up `proposalId`.
 - Never skip validation, never submit twice, never patch files outside `game/`.
