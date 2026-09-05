@@ -15,7 +15,8 @@ id or a file name — every value comes from a tool result or from the user. If 
 The user's request is: `$ARGUMENTS` (may be empty — then ask).
 
 **How to call the tools.** Every ChimpVibe tool is an MCP tool on the server named `chimpvibe`. In Claude Code they
-appear as `mcp__chimpvibe__<tool>` (e.g. `mcp__chimpvibe__chimpvibe_whoami`). If your client lists them as deferred,
+appear as `mcp__chimpvibe__<tool>` (e.g. `mcp__chimpvibe__chimpvibe_whoami`) or, when the server came with this plugin,
+as `mcp__plugin_chimpvibe_chimpvibe__<tool>` — the same tools, use whichever prefix your tool list shows. If your client lists them as deferred,
 load them ONCE with ToolSearch (`select:mcp__chimpvibe__chimpvibe_whoami,mcp__chimpvibe__chimpvibe_games,...`) — after
 ToolSearch returns them they ARE callable: your very next action is a tool call to `mcp__chimpvibe__chimpvibe_whoami`
 with `{}`. Do not announce it, do not test it, do not echo anything — call it. Never reach the server through Bash,
