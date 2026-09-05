@@ -56,8 +56,8 @@ Then give your AI the text of [`plugin/skills/contribute/SKILL.md`](plugin/skill
 5. The owner presses DEPLOY: your change is replayed onto whatever is live by then, accepted, and appears on the tree
    with your name and title.
 
-Privacy: the token is yours; the owner can revoke it. The plugin stores it in your Claude Code user settings exactly as a  token would be stored; it is sent only as the Authorization header to chimpvibe.dev. Nothing you submit is public before the owner deploys it.
+Privacy: the token is yours; the owner can revoke it. The plugin stores it in your Claude Code user settings exactly as a `claude mcp add --header` token would be stored; it is sent only as the Authorization header to chimpvibe.dev. Nothing you submit is public before the owner deploys it.
 
-Tool names in Claude Code: the plugin's server exposes its tools as ; a server added by hand with  exposes them as . Same tools.
+Tool names in Claude Code: the plugin's server exposes its tools as `mcp__plugin_chimpvibe_chimpvibe__<tool>`; a server added by hand with `claude mcp add` exposes them as `mcp__chimpvibe__<tool>`. Same tools.
 
 MIT.
