@@ -16,7 +16,7 @@ one token, one skill.
 ## Install (Claude Code)
 
 ```
-claude plugin marketplace add yousefb1995/chimpvibe-kit
+claude plugin marketplace add burhama/chimpvibe-kit
 claude plugin install chimpvibe@chimpvibe-kit --config token=<your token>
 ```
 

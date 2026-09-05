@@ -26,7 +26,7 @@ tools are in your tool list, it is.
 
 Call `chimpvibe_whoami` with `{}` (the tool `mcp__chimpvibe__chimpvibe_whoami`).
 - Only if that tool does NOT exist in your tool list at all: tell the user the kit is not installed — the install lines
-  are `claude plugin marketplace add yousefb1995/chimpvibe-kit` then `claude plugin install chimpvibe@chimpvibe-kit
+  are `claude plugin marketplace add burhama/chimpvibe-kit` then `claude plugin install chimpvibe@chimpvibe-kit
   --config token=<token>` — and STOP.
 - If the call returns an error: show the user the exact error text and STOP.
 - If any game shows `tokenWorks: false`: tell the user its `remedy` (the owner re-issues their kit). STOP.
