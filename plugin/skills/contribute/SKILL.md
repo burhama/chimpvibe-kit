@@ -91,6 +91,13 @@ Read before you write: `snake_evolve_list_source` (`{"proposalId"}`), then `snak
 (`{"proposalId", "path"}`) on every file you will touch, and `snake_evolve_search_source` (`{"proposalId", "query"}`)
 to find things.
 
+**The game at your base may not be what the user assumes.** A node can carry a whole different game — the running build
+has been replaced wholesale before (`ssnake#14` turned the snake into a swarm shooter). Read the manifest in
+`game/revisions/` (`title`, `summary`, `client.entry`) before patching. If the mechanic the user named does not exist in the
+game this node runs (no food, no score, no snake…), do NOT invent a stand-in and do NOT guess: say what this node's game is,
+name the newest node from Step 2's list whose title fits the ask (or propose the nearest equivalent inside this game), and
+ask ONE question. The open workspace expires on its own (1 h idle); when the user picks another node, repeat Steps 2–4.
+
 **Rule 1 — a NEW revision id, FIRST.** The revision file (`game/revisions/<name>.js`, usually `classic.js`) carries an
 `id:` line. It must change to a new kebab-case id that describes your change (e.g. `id: 'golden-apples'`). The game
 refuses a build that keeps the running id (`REVISION_ID_REUSED`). Do this patch before any other.
