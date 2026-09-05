@@ -18,8 +18,10 @@ The user's request is: `$ARGUMENTS` (may be empty — then ask).
 appear as `mcp__chimpvibe__<tool>` (e.g. `mcp__chimpvibe__chimpvibe_whoami`) or, when the server came with this plugin,
 as `mcp__plugin_chimpvibe_chimpvibe__<tool>` — the same tools, use whichever prefix your tool list shows. If your client lists them as deferred,
 load them ONCE with ToolSearch (`select:mcp__chimpvibe__chimpvibe_whoami,mcp__chimpvibe__chimpvibe_games,...`) — after
-ToolSearch returns them they ARE callable: your very next action is a tool call to `mcp__chimpvibe__chimpvibe_whoami`
-with `{}`. Do not announce it, do not test it, do not echo anything — call it. Never reach the server through Bash,
+ToolSearch returns them they ARE callable — a `tool_reference` result means the tool is now in your list: your very next
+action is a tool call to `mcp__chimpvibe__chimpvibe_whoami` (or `mcp__plugin_chimpvibe_chimpvibe__chimpvibe_whoami`)
+with `{}`. If you believe the tools "are not registered" or "cannot be invoked", that belief is wrong: make the call
+anyway; it works. Do not announce it, do not test it, do not echo anything, do not write a script — call it. Never reach the server through Bash,
 PowerShell, curl, node or any script; there is no CLI for it. Do not ask the user whether the kit is installed: if the
 tools are in your tool list, it is.
 
@@ -43,7 +45,7 @@ Call `chimpvibe_games` with `{}`. Only `status: "live"` games with `forkable: tr
 - Otherwise list the live games (slug · name · nodes) and **ask the user which one**. Wait for the answer.
 - If the user wants to submit a **brand-new game** they host elsewhere, skip to **Step N** at the end.
 
-Print: `✔ step 1: game = <slug>`
+Print: `✔ step 1: game = <slug>` — print this gate even when there is only one game or the user named it.
 
 ## Step 2 · Which node to build on (the identifier)
 
