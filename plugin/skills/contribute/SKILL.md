@@ -68,6 +68,12 @@ Print: `✔ step 3: baseRef = <first 8 chars of args.baseRef>…`
 
 ## Step 4 · State the change in one sentence
 
+**Before you begin anything, check the ask against Rule 3.** If it needs the network (fetch, sockets, webhooks,
+analytics, "send … to a URL"), collects or sends player data anywhere, uses `eval`, reaches outside `game/`, or is not
+a change to the game people play: do NOT begin a workspace. Tell the user plainly that ChimpVibe game code cannot do
+that (it runs sandboxed, no network), offer the nearest in-game alternative, and STOP. There is no gate for this step
+in that case.
+
 Write the `intent`: **the first sentence is the public title** (≤ 80 characters, plain words), then one or two
 sentences explaining the change. If the user's request is unclear, ask ONE question, then write it.
 
