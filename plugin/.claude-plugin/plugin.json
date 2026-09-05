@@ -10,8 +10,7 @@
     "token": {
       "type": "string",
       "title": "ChimpVibe member token",
-      "description": "The token from your ChimpVibe kit (the owner minted it for you). It is yours alone; it never leaves your machine except as the Authorization header to chimpvibe.dev.",
-      "sensitive": true,
+      "description": "The token from your ChimpVibe kit (the owner minted it for you). It is yours alone; it never leaves your machine except as the Authorization header to chimpvibe.dev. Stored in your Claude Code settings like any `claude mcp add --header` token.",
       "required": true
     }
   }
