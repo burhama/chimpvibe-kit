@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "chimpvibe": {
+      "url": "https://chimpvibe.dev/mcp",
+      "headers": { "Authorization": "Bearer ${user_config.token}" }
+    }
+  }
+}

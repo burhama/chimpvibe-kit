@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+*.token
+*.key
+*.env
+.env*
+secrets/
+kits/
+invites*.json
+*.mcp.json.local

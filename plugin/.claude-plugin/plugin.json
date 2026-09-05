@@ -1,0 +1,18 @@
+{
+  "name": "chimpvibe",
+  "description": "Contribute to the games on chimpvibe.dev — the ONE server (chimpvibe.dev/mcp) and the contribute wizard.",
+  "version": "1.0.0",
+  "author": { "name": "ChimpVibe", "url": "https://chimpvibe.dev" },
+  "homepage": "https://chimpvibe.dev",
+  "repository": "https://github.com/yousefb1995/chimpvibe-kit",
+  "license": "MIT",
+  "userConfig": {
+    "token": {
+      "type": "string",
+      "title": "ChimpVibe member token",
+      "description": "The token from your ChimpVibe kit (the owner minted it for you). It is yours alone; it never leaves your machine except as the Authorization header to chimpvibe.dev.",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

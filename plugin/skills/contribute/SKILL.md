@@ -1,0 +1,174 @@
+---
+name: contribute
+description: Contribute a change to a game on chimpvibe.dev (fork a node, patch, validate, submit) or submit a new game. Use whenever the user wants to change, add to, fork, or contribute to a ChimpVibe game such as Ssnake, or mentions chimpvibe.dev, a ChimpVibe kit, or a node like ssnake#9.
+user-invocable: true
+---
+
+# ChimpVibe · contribute — the wizard
+
+You are driving a member's contribution to a game on chimpvibe.dev through the **chimpvibe** MCP server (one server,
+one token; every game's tools are served by it under their own names). Follow the steps **in order**. Each step ends
+when you print its gate line (`✔ step N: …`) as plain text in your reply — printed only AFTER the step is complete, with
+the real values filled in (never a gate with a question in it). **Never skip a gate. Never invent an id, a ref, a session
+id or a file name — every value comes from a tool result or from the user. If you are unsure, STOP and ask the user.**
+
+The user's request is: `$ARGUMENTS` (may be empty — then ask).
+
+**How to call the tools.** Every ChimpVibe tool is an MCP tool on the server named `chimpvibe`. In Claude Code they
+appear as `mcp__chimpvibe__<tool>` (e.g. `mcp__chimpvibe__chimpvibe_whoami`). If your client lists them as deferred,
+load them ONCE with ToolSearch (`select:mcp__chimpvibe__chimpvibe_whoami,mcp__chimpvibe__chimpvibe_games,...`) — after
+ToolSearch returns them they ARE callable: your very next action is a tool call to `mcp__chimpvibe__chimpvibe_whoami`
+with `{}`. Do not announce it, do not test it, do not echo anything — call it. Never reach the server through Bash,
+PowerShell, curl, node or any script; there is no CLI for it. Do not ask the user whether the kit is installed: if the
+tools are in your tool list, it is.
+
+## Step 0 · Who am I
+
+Call `chimpvibe_whoami` with `{}` (the tool `mcp__chimpvibe__chimpvibe_whoami`).
+- Only if that tool does NOT exist in your tool list at all: tell the user the kit is not installed — the install lines
+  are `claude plugin marketplace add yousefb1995/chimpvibe-kit` then `claude plugin install chimpvibe@chimpvibe-kit
+  --config token=<token>` — and STOP.
+- If the call returns an error: show the user the exact error text and STOP.
+- If any game shows `tokenWorks: false`: tell the user its `remedy` (the owner re-issues their kit). STOP.
+- Note `workspaces` per game: a game allows 3 open workspaces. If 3 are listed, the user must let one expire (1 h idle)
+  or you must finish one — say so.
+
+Print: `✔ step 0: I am <member.name> (<member.id>); games: <slug…>; open workspaces: <n>`
+
+## Step 1 · Which game
+
+Call `chimpvibe_games` with `{}`. Only `status: "live"` games with `forkable: true` can be changed.
+- If the user already named the game in their request, use it — do not ask again.
+- Otherwise list the live games (slug · name · nodes) and **ask the user which one**. Wait for the answer.
+- If the user wants to submit a **brand-new game** they host elsewhere, skip to **Step N** at the end.
+
+Print: `✔ step 1: game = <slug>`
+
+## Step 2 · Which node to build on (the identifier)
+
+Call `chimpvibe_tree` with `{"slug": "<slug>"}`. Every node has a **ref** like `ssnake#9` (the number is its place in
+accept order; `#0` is the base). `head` is the ref of the build the game runs right now.
+
+**First look at the user's request for a ref.** A ref is the pattern `<slug>#<number>` (e.g. `ssnake#3`).
+- The request names a ref that is in the tree → that is the base. **Do not ask.**
+- The request says "the running build", "latest", "current", "head" → the base is `head`. **Do not ask.**
+- The request names a ref that is NOT in the tree → tell the user it does not exist, list the valid refs (newest 6 as
+  `ref · title · author`), and ask which one. STOP until they answer. Never guess.
+- The request names no node at all → show the newest 6 as `ref · title · author`, say the running build is `head`, and
+  ask which one. STOP until they answer.
+
+Print, only once the base is decided: `✔ step 2: base = <ref> ("<title>" by <author>)`
+
+## Step 3 · Get the exact fork call
+
+Call `chimpvibe_fork_from` with `{"slug": "<slug>", "ref": "<ref>"}`. The result holds `call` and `args`
+(`baseRef`, `intent`). **Copy `args.baseRef` verbatim** — it is the node's commit.
+
+Print: `✔ step 3: baseRef = <first 8 chars of args.baseRef>…`
+
+## Step 4 · State the change in one sentence
+
+Write the `intent`: **the first sentence is the public title** (≤ 80 characters, plain words), then one or two
+sentences explaining the change. If the user's request is unclear, ask ONE question, then write it.
+
+Call `snake_evolve_begin_proposal` with `{"baseRef": "<args.baseRef>", "intent": "<intent>"}`. Keep the returned
+workspace `id` (it starts with `proposal-`); every later call needs it as `proposalId`.
+
+Print: `✔ step 4: workspace <id>, intent "<first sentence>"`
+
+## Step 5 · Patch, under the rules
+
+Read before you write: `snake_evolve_list_source` (`{"proposalId"}`), then `snake_evolve_read_source`
+(`{"proposalId", "path"}`) on every file you will touch, and `snake_evolve_search_source` (`{"proposalId", "query"}`)
+to find things.
+
+**Rule 1 — a NEW revision id, FIRST.** The revision file (`game/revisions/<name>.js`, usually `classic.js`) carries an
+`id:` line. It must change to a new kebab-case id that describes your change (e.g. `id: 'golden-apples'`). The game
+refuses a build that keeps the running id (`REVISION_ID_REUSED`). Do this patch before any other.
+
+**Rule 2 — labels ≤ 40 characters.** Any `label` in presentation/HUD data must be 1–40 characters.
+
+**Rule 3 — only `game/`.** Only files under `game/` with `.js`, `.json`, `.md`. No network, no `eval`, no imports from
+outside `game/`, no new dependencies.
+
+**Rule 4 — one exact match per patch.** `snake_evolve_apply_patch` takes `{"proposalId", "path", "match", "replacement"}`.
+`match` must occur **exactly once** in the file: copy it verbatim from `read_source`, including indentation. To create a
+file, pass `"match": null`. Small patches, one at a time. A workspace allows 100 patches.
+
+Print after your last patch: `✔ step 5: patched <n> file(s): <paths>` (Rule 1 must be among them unless the file
+already carried a new id).
+
+## Step 6 · Validate until green
+
+Call `snake_evolve_validate` with `{"proposalId"}`.
+- `status: "validated"` → continue.
+- Otherwise read `error.code` and `error.message`, look the code up in the **ERROR → REMEDY** table below, do exactly
+  that, then validate again. Up to 6 rounds. If still failing, show the user the last message and ask how to proceed.
+
+Print: `✔ step 6: validated (round <k>)`
+
+## Step 7 · Submit
+
+Call `snake_evolve_submit_proposal` with `{"proposalId"}`. The result's `proposal` shows `status: "pending"` and its
+`baseCommitSha` (the node you chose). If `stale: true` appears, that is fine: the owner's deploy replays your change
+onto the live head.
+
+Print: `✔ step 7: submitted; base <ref>; the owner's DEPLOY finishes it`
+
+## Step 8 · Tell the user what happens now
+
+Say, in three lines: the fruit is **pending** until the owner presses DEPLOY in his app; when he does, it goes live
+on the game and appears on https://chimpvibe.dev/<slug>/tree with their name and the title; to change it, do **not**
+resubmit — begin a **new** proposal from the head (Step 2) when it is live. There is no "revise" tool. Do not submit the
+same change twice.
+
+Print: `✔ step 8: done`
+
+## Step N · A brand-new game (not a fork)
+
+Ask for: title (≤ 80), a blurb (≤ 400), the https URL where it is playable, optionally a repo URL and a PNG capture.
+Check the URL answers. Call `chimpvibe_submit_game` with `{title, blurb, host[, repo][, art_png_base64]}`. Then
+`chimpvibe_my_submissions` to show its `pending` state. Print: `✔ step N: submitted "<title>" — pending the owner's
+DEPLOY`. Stop.
+
+## Identification — how nodes are named
+
+- `<game>#<n>` — the node's identifier. `n` counts accepted builds in order (`#0` = the base). Numbers never change
+  and never move; a pending fruit reads `#?` until the owner accepts it.
+- `head` (from `chimpvibe_tree`) — the ref of the build the game runs now. Building on `head` is the normal choice;
+  building on an older node is fine too (the owner's deploy replays your change onto whatever is live by then).
+- `baseRef` — the 40-hex commit behind a ref. You never type it: `chimpvibe_fork_from` gives it to you.
+- `proposalId` — your workspace, `proposal-…`, from `snake_evolve_begin_proposal`.
+- `sessionId` — not needed. Omit it. Never invent one.
+
+## ERROR → REMEDY
+
+| code | do this |
+|---|---|
+| `REVISION_ID_REUSED` | change the `id:` line of the revision file to a NEW kebab-case id (Rule 1), validate again |
+| `CONTRACT_INVALID` | the message names the field: a `label` must be 1–40 chars; a death `cause` a lowercase token — fix it, validate again |
+| `SOURCE_POLICY_VIOLATION` | you touched something outside Rule 3 (network, eval, a path outside `game/`, a bad extension) — undo it, validate again |
+| `SOURCE_LIMIT_EXCEEDED` | too many files or bytes — trim, validate again |
+| `CANDIDATE_EXECUTION_FAILED` / `VALIDATOR_FAILED` | your code crashed in the smoke run — read the message (file:line), fix, validate again |
+| `CANDIDATE_CONTRACT_UNSUPPORTED` | the manifest must say `runtimeVersion` 1 or 2 and `clientVersion` 1–3 |
+| `VALIDATION_STALE` | you patched after validating — validate again, then submit |
+| `PATCH_MATCH_NOT_FOUND` / `PATCH_MATCH_AMBIGUOUS` | your `match` is not found, or found twice — re-read the file and copy a unique passage verbatim |
+| `WORKSPACE_LIMIT_EXCEEDED` | 3 workspaces open (or 100 patches used) — submit one, or wait for one to expire (1 h idle) |
+| `PROPOSAL_NOT_FOUND` | wrong `proposalId` — use the one Step 4 printed; if it expired, begin again |
+| `PROPOSAL_STATE_INVALID` | this workspace is already submitted — begin a new one for a new change |
+| `BASE_REF_INVALID` / `BASE_REF_UNKNOWN` | `baseRef` must come verbatim from `chimpvibe_fork_from` — repeat Steps 2–3 |
+| `PROPOSAL_BASE_MISMATCH` | the head moved — nothing to do, keep going |
+| `SESSION_NOT_FOUND` | you passed a `sessionId` — omit it |
+| `UNAUTHORIZED` / `tokenWorks: false` | the token is not on the game's registry — the owner re-issues the kit |
+| `INTERNAL_ERROR` | wait a minute, retry once; then tell the user to report it |
+
+Every error from the server also carries a `remedy` field — it says the same thing. Follow it.
+
+## Never
+
+- Never call a tool that is not in `tools/list` (there is no `snake_evolve_revise_proposal`).
+- Never reach the server through Bash / PowerShell / curl / a script — only through the MCP tools themselves.
+- Never ask the user to install anything while the `mcp__chimpvibe__*` tools are in your tool list.
+- Never pass `sessionId`, a made-up `baseRef`, a made-up `proposalId`.
+- Never skip validation, never submit twice, never patch files outside `game/`.
+- Never ask the user for their token, and never print it.
