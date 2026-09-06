@@ -126,7 +126,7 @@ outside `game/`, no new dependencies.
 `match` must occur **exactly once** in the file: copy it verbatim from `read_source`, including indentation. To create a
 file, pass `"match": null`. Small patches, one at a time. A workspace allows 100 patches.
 
-Print after your last patch: `✔ step 5: patched <n> file(s): <paths>` (Rule 1 must be among them unless the file
+Print after your last patch and BEFORE you call `snake_evolve_validate`: `✔ step 5: patched <n> file(s): <paths>` (Rule 1 must be among them unless the file
 already carried a new id).
 
 ## Step 6 · Validate until green
