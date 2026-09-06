@@ -8,3 +8,4 @@ secrets/
 kits/
 invites*.json
 *.mcp.json.local
+.verify-*.png
