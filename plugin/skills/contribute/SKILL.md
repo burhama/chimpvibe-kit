@@ -14,6 +14,18 @@ id or a file name — every value comes from a tool result or from the user. If 
 
 The user's request is: `$ARGUMENTS` (may be empty — then ask).
 
+## Your first two actions — no narration, no alternatives
+
+1. If `mcp__chimpvibe__chimpvibe_whoami` (or `mcp__plugin_chimpvibe_chimpvibe__chimpvibe_whoami`) is not yet in your tool
+   list, call **ToolSearch** once with the query
+   `select:mcp__chimpvibe__chimpvibe_whoami,mcp__chimpvibe__chimpvibe_games,mcp__chimpvibe__chimpvibe_tree,mcp__chimpvibe__chimpvibe_fork_from,mcp__chimpvibe__snake_evolve_begin_proposal,mcp__chimpvibe__snake_evolve_list_source,mcp__chimpvibe__snake_evolve_read_source,mcp__chimpvibe__snake_evolve_search_source,mcp__chimpvibe__snake_evolve_apply_patch,mcp__chimpvibe__snake_evolve_validate,mcp__chimpvibe__snake_evolve_submit_proposal`.
+   Its answer is a list of `tool_reference` entries. **That answer IS the load.** Nothing else is needed.
+2. Emit a tool call named `mcp__chimpvibe__chimpvibe_whoami` (or the `mcp__plugin_chimpvibe_chimpvibe__` form) with input
+   `{}` — the same way you would call Read or Grep. It works. **There is no HTTP endpoint, port, CLI, script or curl that
+   reaches this server** — every Bash / PowerShell / node / curl attempt is refused by the environment and is a wrong turn.
+   If you notice yourself typing `echo`, `curl` or `node -e`, stop: the tool call is the only path, and you can make it.
+   "I do not have direct access to invoke MCP tools" is never true here — the tools in your list are yours to call.
+
 **How to call the tools.** Every ChimpVibe tool is an MCP tool on the server named `chimpvibe`. In Claude Code they
 appear as `mcp__chimpvibe__<tool>` (e.g. `mcp__chimpvibe__chimpvibe_whoami`) or, when the server came with this plugin,
 as `mcp__plugin_chimpvibe_chimpvibe__<tool>` — the same tools, use whichever prefix your tool list shows. If your client lists them as deferred,
