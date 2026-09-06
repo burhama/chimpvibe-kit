@@ -25,6 +25,9 @@ The user's request is: `$ARGUMENTS` (may be empty — then ask).
    reaches this server** — every Bash / PowerShell / node / curl attempt is refused by the environment and is a wrong turn.
    If you notice yourself typing `echo`, `curl` or `node -e`, stop: the tool call is the only path, and you can make it.
    "I do not have direct access to invoke MCP tools" is never true here — the tools in your list are yours to call.
+3. As soon as that call answers, print its gate line as plain text — `✔ step 0: I am <member.name> (<member.id>); games:
+   <slug…>; open workspaces: <n>` — before any other sentence. Every later step ends the same way (its own `✔ step N:` line);
+   a step without its printed gate line did not happen.
 
 **How to call the tools.** Every ChimpVibe tool is an MCP tool on the server named `chimpvibe`. In Claude Code they
 appear as `mcp__chimpvibe__<tool>` (e.g. `mcp__chimpvibe__chimpvibe_whoami`) or, when the server came with this plugin,
