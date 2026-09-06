@@ -17,12 +17,18 @@ const err = (code, message) => ({ code, message });
 const text = (value) => ({ content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }] });
 const fail = (message) => ({ content: [{ type: 'text', text: JSON.stringify({ ok: false, error: message }) }], isError: true });
 const str = (v, max, name) => { if (typeof v !== 'string') throw new Error(`${name} must be a string`); const s = v.trim(); if (!s || s.length > max) throw new Error(`${name} must be 1–${max} characters`); return s; };
-const httpsUrl = (v, name) => { const s = str(v, 200, name); let u; try { u = new URL(s); } catch { throw new Error(`${name} must be a URL`); } if (u.protocol !== 'https:' || !u.hostname.includes('.')) throw new Error(`${name} must be an https URL with a real host`); return u.toString(); };
+// BEV-9 (#4.1): a public https URL — no credentials in it, no loopback / private / link-local host (nothing fetches these
+// URLs today; the day DEPLOY captures a screenshot of `host`, this is what keeps it off the box's own network).
+const PRIVATE_HOST = /^(localhost|.*\.(localhost|local|internal))$/i;
+const PRIVATE_IPV4 = /^(0\.|10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
+const PRIVATE_IPV6 = /^\[(::1?|fe[89ab][0-9a-f]:.*|f[cd][0-9a-f]{2}:.*|::ffff:.*)\]$/i;
+const isPrivateHost = (h) => PRIVATE_HOST.test(h) || PRIVATE_IPV4.test(h) || PRIVATE_IPV6.test(h);
+const httpsUrl = (v, name) => { const s = str(v, 200, name); let u; try { u = new URL(s); } catch { throw new Error(`${name} must be a URL`); } if (u.protocol !== 'https:' || !u.hostname.includes('.')) throw new Error(`${name} must be an https URL with a real host`); if (u.username || u.password) throw new Error(`${name} must not carry credentials`); if (isPrivateHost(u.hostname)) throw new Error(`${name} must be a public host`); return u.toString(); };
 
 // BEV-6: what a member's AI does next for each refusal a game can raise — appended as `remedy` to every forwarded error,
 // and the source of the skill's ERROR → REMEDY table (plugin/skills/contribute/SKILL.md).
 export const REMEDIES = {
-  SESSION_NOT_FOUND: 'omit sessionId — the server has exactly one session',
+  SESSION_NOT_FOUND: 'copy args.sessionId verbatim from chimpvibe_fork_from — never invent one, never omit one it gave you (each game has its own session)',
   REVISION_ID_REUSED: 'your revision file still carries the running revision id: change its id: line to a NEW kebab-case id, then validate again',
   CONTRACT_INVALID: 'a contract field is invalid (a presentation label must be 1–40 characters; a death cause a lowercase token): fix the named field, then validate again',
   SOURCE_POLICY_VIOLATION: 'only files under game/ with .js .json .md, no network, no eval, no imports outside game/: undo the violation, then validate again',
@@ -46,9 +52,23 @@ export const REMEDIES = {
 };
 
 const GAME_TIMEOUT_MS = 120_000;
-async function postRpc(url, authorization, message, timeoutMs = GAME_TIMEOUT_MS) {
-  const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization }, body: JSON.stringify(message), signal: AbortSignal.timeout(timeoutMs) });
-  const text = await r.text();
+// BEV-9 (#3.2): whoami's per-call budgets and its overall deadline (a healthy host answers each call in well under 1 s)
+const WHOAMI_INIT_MS = 4_000, WHOAMI_TOOLS_MS = 4_000, WHOAMI_SESSION_MS = 6_000, WHOAMI_TOTAL_MS = 8_000;
+// BEV-8: `auth` is the member's own bearer (a string) or, when this server holds the proxy credential, an object
+// { authorization: 'Bearer <proxy>', viewerHeaders: { 'x-evolve-viewer-id', 'x-evolve-viewer-name' } } — the host trusts the
+// site's word for who the member is, so a self-served member needs no token on any game registry.
+const authHeaders = (auth) => (typeof auth === 'string' ? { authorization: auth } : { authorization: auth.authorization, ...(auth.viewerHeaders || {}) });
+const GAME_REPLY_LIMIT = 2 * 1024 * 1024; // BEV-9 (#3.4): a game host's reply is read up to this many bytes, then refused
+async function readCapped(r, limit) {
+  const declared = Number(r.headers.get('content-length') || 0);
+  if (declared > limit) { try { await r.body?.cancel(); } catch {} throw new Error(`reply over ${limit} bytes`); }
+  const chunks = []; let size = 0;
+  for await (const chunk of r.body || []) { size += chunk.length; if (size > limit) { try { await r.body.cancel(); } catch {} throw new Error(`reply over ${limit} bytes`); } chunks.push(chunk); }
+  return Buffer.concat(chunks).toString('utf8');
+}
+async function postRpc(url, auth, message, timeoutMs = GAME_TIMEOUT_MS) {
+  const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...authHeaders(auth) }, body: JSON.stringify(message), signal: AbortSignal.timeout(timeoutMs) });
+  const text = await readCapped(r, GAME_REPLY_LIMIT);
   if (r.status === 401 || r.status === 403) return { status: r.status, message: null };
   const line = text.split('\n').find((l) => l.startsWith('data:'));
   let parsed = null;
@@ -67,15 +87,16 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
   // its arguments name: `sessionId` (chimpvibe_fork_from puts the game's session id in the begin call) → that game;
   // `proposalId` → the game that answered for that proposal before (remembered here from every reply); otherwise every
   // game that has the tool is asked in catalog order and a PROPOSAL_NOT_FOUND moves on to the next. One game = as before.
-  const proposalHome = new Map(); // proposalId → game url
+  const proposalHome = new Map(); // proposalId → game url (BEV-9 #3.1: capped — the oldest entry goes when it is full)
+  const PROPOSAL_HOME_LIMIT = 5000;
   const PROPOSAL_ID = /proposal-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
-  const remember = (game, result) => { try { for (const item of result?.content || []) if (item?.type === 'text') for (const m of String(item.text).match(PROPOSAL_ID) || []) proposalHome.set(m, game.url); } catch {} };
+  const remember = (game, result) => { try { for (const item of result?.content || []) if (item?.type === 'text') for (const m of String(item.text).match(PROPOSAL_ID) || []) { proposalHome.delete(m); proposalHome.set(m, game.url); while (proposalHome.size > PROPOSAL_HOME_LIMIT) proposalHome.delete(proposalHome.keys().next().value); } } catch {} };
   const errorCodeOf = (result) => { try { const body = JSON.parse(result?.content?.[0]?.text || ''); return body?.error?.code || body?.code || null; } catch { return null; } };
-  async function gameTools(game, authorization) {
+  async function gameTools(game, authorization, timeoutMs = 15_000) {
     const cached = gameToolCache.get(game.url);
     if (cached && Date.now() - cached.at < 60_000) return cached.tools;
     try {
-      const { status, message } = await postRpc(game.url, authorization, { jsonrpc: '2.0', id: 'tools', method: 'tools/list' }, 15_000);
+      const { status, message } = await postRpc(game.url, authorization, { jsonrpc: '2.0', id: 'tools', method: 'tools/list' }, timeoutMs);
       const tools = status === 200 && Array.isArray(message?.result?.tools) ? message.result.tools : null;
       if (tools) { gameToolCache.set(game.url, { at: Date.now(), tools }); return tools; }
       return cached?.tools || [];
@@ -112,7 +133,10 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
     const hash = createHash('sha256').update(token).digest('hex');
     const member = members().find((m) => m.tokenHash === hash);
     if (!member || member.enabled === false) return null;
-    return { id: member.id, name: String(member.name || member.id).slice(0, 80), authorization: header };
+    const name = String(member.name || member.id).slice(0, 80);
+    const proxy = String(process.env.CHIMPVIBE_PROXY_TOKEN || '');
+    const authorization = proxy.length >= 32 ? { authorization: `Bearer ${proxy}`, viewerHeaders: { 'x-evolve-viewer-id': member.id, 'x-evolve-viewer-name': name } } : header;
+    return { id: member.id, name, authorization, self: member.self === true };
   }
 
   function submissions() {
@@ -134,20 +158,28 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
     const a = args && typeof args === 'object' ? args : {};
     switch (name) {
       case 'chimpvibe_whoami': {
+        // BEV-9 (#3.2): whoami is a member's FIRST call and some clients give a tool 5 s — every host is asked in parallel
+        // with short per-call budgets, and ONE overall deadline answers for any host still silent (reachable:false).
         const list = games();
-        const checked = await Promise.all(list.map(async (g) => {
-          let tokenWorks = false, tools = 0, workspaces = null;
+        const probe = async (g) => {
+          let tokenWorks = false, tools = 0, workspaces = null, reachable = true;
           try {
-            const init = await postRpc(g.url, who.authorization, { jsonrpc: '2.0', id: 'init', method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'chimpvibe', version } } }, 10_000);
+            const init = await postRpc(g.url, who.authorization, { jsonrpc: '2.0', id: 'init', method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'chimpvibe', version } } }, WHOAMI_INIT_MS);
             tokenWorks = init.status === 200;
             if (tokenWorks) {
-              tools = (await gameTools(g, who.authorization)).length;
-              const session = await postRpc(g.url, who.authorization, { jsonrpc: '2.0', id: 'ws', method: 'tools/call', params: { name: 'snake_evolve_session', arguments: {} } }, 20_000);
+              tools = (await gameTools(g, who.authorization, WHOAMI_TOOLS_MS)).length;
+              const session = await postRpc(g.url, who.authorization, { jsonrpc: '2.0', id: 'ws', method: 'tools/call', params: { name: 'snake_evolve_session', arguments: {} } }, WHOAMI_SESSION_MS);
               try { const body = JSON.parse(session.message?.result?.content?.[0]?.text || '{}'); workspaces = Array.isArray(body.result?.workspaces) ? body.result.workspaces.map((w) => ({ id: w.id, status: w.status, intent: String(w.intent || '').slice(0, 80) })) : null; } catch { workspaces = null; }
             }
-          } catch { tokenWorks = false; }
-          return { slug: g.slug, name: g.name, server: g.server, url: g.url, tokenWorks, tools, workspaces, remedy: tokenWorks ? null : 'this token is not on the game\'s registry: ask the owner for a fresh kit (PATCH)' };
-        }));
+          } catch { tokenWorks = false; reachable = false; }
+          return { slug: g.slug, name: g.name, server: g.server, url: g.url, reachable, tokenWorks, tools, workspaces, remedy: tokenWorks ? null : reachable ? 'this token is not on the game\'s registry: ask the owner for a fresh kit (PATCH)' : 'the game host did not answer in time: try again in a minute; if it repeats, tell the owner' };
+        };
+        const silent = (g) => ({ slug: g.slug, name: g.name, server: g.server, url: g.url, reachable: false, tokenWorks: false, tools: 0, workspaces: null, remedy: 'the game host did not answer in time: try again in a minute; if it repeats, tell the owner' });
+        const results = list.map((g) => probe(g).catch(() => silent(g)));
+        const settled = new Array(list.length).fill(null);
+        results.forEach((p, i) => p.then((v) => { settled[i] = v; }));
+        await Promise.race([Promise.all(results), new Promise((r) => setTimeout(r, WHOAMI_TOTAL_MS).unref?.())]);
+        const checked = list.map((g, i) => settled[i] || silent(g));
         const mine = submissions().filter((s) => s.memberId === who.id);
         return text({ member: { id: who.id, name: who.name }, games: checked, submissions: { pending: mine.filter((s) => s.status === 'pending').length, deployed: mine.filter((s) => s.status === 'deployed').length }, next: 'chimpvibe_games → chimpvibe_tree {slug} → chimpvibe_fork_from {slug, ref} → the begin call it returns (snake_evolve_begin_proposal is served by this same server)' });
       }
@@ -165,7 +197,7 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
         const tree = readTree(slug);
         const running = tree.running || null;
         // BEV-7 P2: diff = { added, removed } lines vs the parent (the root: its own size); null when the node was not scored
-        const nodes = tree.nodes.map((n) => ({ ref: n.ref || null, id: n.id, parent: n.parent, branch: n.branch, author: n.author, title: n.label, blurb: n.blurb || n.label, at: n.at, diff: diffOf(n), running: Boolean(running && n.id === running), download: `https://chimpvibe.dev${n.download}` }));
+        const nodes = tree.nodes.map((n) => ({ ref: n.ref || null, id: n.id, parent: n.parent, branch: n.branch, author: n.author, title: n.label, blurb: n.blurb || n.label, at: n.at, diff: diffOf(n), running: Boolean(running && n.id === running), download: typeof n.download === 'string' && n.download.startsWith('/') && !n.download.startsWith('//') ? `https://chimpvibe.dev${n.download}` : null }));
         nodes.sort((x, y) => String(y.at || '').localeCompare(String(x.at || '')));
         return text({ slug, root: tree.root, head: nodes.find((n) => n.running)?.ref || null, nodes, how: 'fork one of these: chimpvibe_fork_from {"slug":"' + slug + '","ref":"<ref>"}' });
       }
@@ -207,7 +239,8 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
         const repo = a.repo === undefined || a.repo === null || a.repo === '' ? null : httpsUrl(a.repo, 'repo');
         const mine = submissions().filter((s) => s.memberId === who.id);
         if (mine.filter((s) => s.status === 'pending').length >= PENDING_LIMIT) return fail(`you already have ${PENDING_LIMIT} pending submissions`);
-        if (submissions().some((s) => s.title.toLowerCase() === title.toLowerCase() && s.status !== 'rejected')) return fail('a submission with that title already exists');
+        // BEV-9 (#4.3): a title is unique per member — one member cannot reserve a title for everyone (the app shows title + author)
+        if (mine.some((s) => s.title.toLowerCase() === title.toLowerCase() && s.status !== 'rejected')) return fail('you already have a submission with that title');
         let art = null;
         if (a.art_png_base64 !== undefined && a.art_png_base64 !== null && a.art_png_base64 !== '') {
           if (typeof a.art_png_base64 !== 'string') return fail('art_png_base64 must be a base64 string');
@@ -216,7 +249,7 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
           if (bytes.readUInt32BE(0) !== 0x89504e47) return fail('art must be a PNG');
           art = bytes;
         }
-        const id = `s-${Date.now().toString(36)}-${randomBytes(2).toString('hex')}`;
+        const id = `s-${Date.now().toString(36)}-${randomBytes(8).toString('hex')}`; // BEV-9 (#4.4): 64 random bits
         const record = { version: 1, id, memberId: who.id, author: who.name, title, blurb, host, repo, art: Boolean(art), at: new Date().toISOString(), status: 'pending', slot: null };
         mkdirSync(submissionsDir, { recursive: true });
         if (art) writeFileSync(resolve(submissionsDir, `${id}.png`), art);
@@ -248,12 +281,24 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
       case 'ping': return reply({});
       case 'tools/list': {
         // this server's tools + every game's tools, each under its own name, all with the ONE token (BEV-6)
+        // BEV-9 (#3.3): tool names are unique per server (clients key tools by name), so a name several games serve is listed
+        // ONCE — its description says so and names the routing rule (the call goes to the game whose sessionId it carries).
         const merged = [...tools];
-        for (const g of games()) for (const t of await gameTools(g, who.authorization)) if (!merged.some((x) => x.name === t.name)) merged.push({ ...t, description: `[${g.name}] ${t.description || ''}` });
+        const holders = new Map(); // tool name → the games that serve it
+        for (const g of games()) for (const t of await gameTools(g, who.authorization)) {
+          const seen = holders.get(t.name) || [];
+          holders.set(t.name, [...seen, g.name]);
+          if (!seen.length) merged.push({ ...t, description: `[${g.name}] ${t.description || ''}` });
+        }
+        for (const t of merged) {
+          const served = holders.get(t.name) || [];
+          if (served.length > 1) t.description = `[${served.join(' · ')} — served by every game: pass the sessionId that chimpvibe_fork_from gave you] ${String(t.description).replace(/^\[[^\]]*\]\s*/, '')}`;
+        }
         return reply({ tools: merged });
       }
       case 'tools/call': {
         const name = String(params?.name || '');
+        console.log(`[mcp] ${who.id} ${name}`); // BEV-9 (#3.5): who called what — never the token
         if (tools.some((t) => t.name === name)) {
           try {
             const result = await call(name, params?.arguments, who);
