@@ -77,6 +77,10 @@ async function postRpc(url, auth, message, timeoutMs = GAME_TIMEOUT_MS) {
 }
 
 // BEV-7 P2: a node's diff score as the tree document carries it — { added, removed } or null (never a guess)
+// The approval system, in the words every AI reads right after it submits: a submission is the END of the AI's job. The
+// owner alone reviews and deploys (ONE press in his app); nothing is public before that. Other AIs kept trying to publish
+// or host the work after submitting — this sentence, on every submit reply, is what stops them.
+export const SUBMITTED_NEXT = 'Submission complete — there is nothing more for you to do. The owner reviews it and presses DEPLOY in his app; until then it is pending and not public. Do NOT publish, host, deploy, build a page, push anywhere, open a PR or ask where to host it — the owner does all of that. Tell your user, in these words: "Submission complete, there\'s no more for me to do."';
 const diffOf = (node) => (node?.diff && Number.isInteger(node.diff.added) && Number.isInteger(node.diff.removed) ? { added: node.diff.added, removed: node.diff.removed } : null);
 
 export function createMcp({ dataRoot, catalogNow, readTree, guideText, version = '1.0', gameMcpUrl = (p) => p.fork?.mcp || null }) {
@@ -102,6 +106,17 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
       return cached?.tools || [];
     } catch { return cached?.tools || []; }
   }
+  // after a successful snake_evolve_submit_proposal the game's reply gains `done: true` + `next` = SUBMITTED_NEXT
+  const withDone = (name, result) => {
+    if (name !== 'snake_evolve_submit_proposal' || result?.isError) return result;
+    try {
+      const item = result?.content?.[0];
+      if (!item || item.type !== 'text') return result;
+      const body = JSON.parse(item.text);
+      if (!body || typeof body !== 'object' || body.ok === false || body.error) return result;
+      return { ...result, content: [{ type: 'text', text: JSON.stringify({ ...body, done: true, next: SUBMITTED_NEXT }, null, 2) }, ...result.content.slice(1)] };
+    } catch { return result; }
+  };
   const withRemedy = (result) => {
     // a game's error envelope is JSON text {ok:false, error:{code,message}} (or {code,message}); add what to do next
     try {
@@ -229,7 +244,7 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
           mcp: gameMcpUrl(project), sessionId,
           args: { ...(sessionId ? { sessionId } : {}), baseRef: found.id, intent: '<A short title for your change (one sentence, ≤ 80 characters). Then explain the change plainly.>' },
           base: { ref: found.ref || null, id: found.id, branch: found.branch, title: found.label, author: found.author, diff: diffOf(found) },
-          note: `Next call, verbatim: ${project.fork.tool} {${sessionArg}"baseRef":"${found.id}","intent":"<title sentence. Then the change.>"} — your workspace starts as node ${found.ref || found.id.slice(0, 8)} ("${found.label}" by ${found.author}) on ${project.name || slug}; when the owner deploys, your change is replayed onto whatever is live by then. The first sentence of your intent becomes the public title; the whole intent is the card's blurb. Then: list/read/search_source → apply_patch (new revision id first) → validate until "validated" → submit_proposal (each with the proposalId the begin call returns — the server routes it to the same game).`,
+          note: `Next call, verbatim: ${project.fork.tool} {${sessionArg}"baseRef":"${found.id}","intent":"<title sentence. Then the change.>"} — your workspace starts as node ${found.ref || found.id.slice(0, 8)} ("${found.label}" by ${found.author}) on ${project.name || slug}; when the owner deploys, your change is replayed onto whatever is live by then. The first sentence of your intent becomes the public title; the whole intent is the card's blurb. Then: list/read/search_source → apply_patch (new revision id first) → validate until "validated" → submit_proposal (each with the proposalId the begin call returns — the server routes it to the same game). After submit_proposal your job is over: the owner alone deploys — do not publish, host or deploy anything yourself.`,
         });
       }
       case 'chimpvibe_submit_game': {
@@ -255,7 +270,7 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
         if (art) writeFileSync(resolve(submissionsDir, `${id}.png`), art);
         const file = resolve(submissionsDir, `${id}.json`); const tmp = `${file}.${randomBytes(3).toString('hex')}.tmp`;
         writeFileSync(tmp, JSON.stringify(record)); renameSync(tmp, file);
-        return text({ ok: true, id, status: 'pending', next: 'The owner reviews submissions in his app; when he presses DEPLOY your game takes a slot on chimpvibe.dev. Check with chimpvibe_my_submissions.' });
+        return text({ ok: true, id, status: 'pending', done: true, next: SUBMITTED_NEXT + ' Your game is already hosted at the URL you gave — leave it there. When the owner presses DEPLOY it gets its own page at chimpvibe.dev/<name>; chimpvibe_my_submissions shows the state.' });
       }
       case 'chimpvibe_my_submissions':
         return text(submissions().filter((s) => s.memberId === who.id).sort((x, y) => String(y.at).localeCompare(String(x.at))).map((s) => ({ id: s.id, title: s.title, status: s.status, slot: s.slot, at: s.at, host: s.host })));
@@ -276,7 +291,7 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
     switch (method) {
       case 'initialize': {
         const asked = String(params?.protocolVersion || '');
-        return reply({ protocolVersion: PROTOCOLS.includes(asked) ? asked : PROTOCOLS[0], capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'chimpvibe', version }, instructions: 'ChimpVibe is a site where a community branches and forks games in the open. This ONE server fronts every game with your one token. Call chimpvibe_whoami first, then chimpvibe_guide; to change a game: chimpvibe_tree → chimpvibe_fork_from {ref} → the begin call it returns → patch → validate → submit. If you have the ChimpVibe skill, run /chimpvibe:contribute — it walks you through every step.' });
+        return reply({ protocolVersion: PROTOCOLS.includes(asked) ? asked : PROTOCOLS[0], capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'chimpvibe', version }, instructions: 'ChimpVibe is a site where a community branches and forks games in the open. This ONE server fronts every game with your one token. Call chimpvibe_whoami first, then chimpvibe_guide; to change a game: chimpvibe_tree → chimpvibe_fork_from {ref} → the begin call it returns → patch → validate → submit. If you have the ChimpVibe skill, run /chimpvibe:contribute — it walks you through every step. After you submit, your job is OVER: the owner alone reviews and deploys (nothing is public before that) — never publish, host or deploy anything yourself; tell your user "Submission complete, there\'s no more for me to do." and stop.' });
       }
       case 'ping': return reply({});
       case 'tools/list': {
@@ -326,7 +341,7 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
             if (message.error) return error(message.error.code ?? -32000, `${g.name}: ${message.error.message || 'error'}`);
             if (tryNext && message.result?.isError && errorCodeOf(message.result) === 'PROPOSAL_NOT_FOUND') { lastReply = reply(withRemedy(message.result)); continue; }
             remember(g, message.result);
-            return reply(withRemedy(message.result));
+            return reply(withDone(name, withRemedy(message.result)));
           } catch (e) {
             return reply(fail(`the game ${g.name} did not answer (${String(e?.message || e).slice(0, 120)}) — wait a minute and try once more; if it repeats, tell the owner`));
           }

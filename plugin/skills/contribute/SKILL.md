@@ -1,6 +1,6 @@
 ---
 name: contribute
-description: Contribute a change to a game on chimpvibe.dev (fork a node, patch, validate, submit) or submit a new game. Use whenever the user wants to change, add to, fork, or contribute to a ChimpVibe game such as Ssnake, or mentions chimpvibe.dev, a ChimpVibe kit, or a node like ssnake#9.
+description: Contribute a change to a game on chimpvibe.dev (fork a node, patch, validate, submit — then STOP; the owner alone deploys) or submit a new game. Use whenever the user wants to change, add to, fork, or contribute to a ChimpVibe game such as Ssnake, or mentions chimpvibe.dev, a ChimpVibe kit, or a node like ssnake#9.
 user-invocable: true
 ---
 
@@ -11,6 +11,11 @@ one token; every game's tools are served by it under their own names). Follow th
 when you print its gate line (`✔ step N: …`) as plain text in your reply — printed only AFTER the step is complete, with
 the real values filled in (never a gate with a question in it). **Never skip a gate. Never invent an id, a ref, a session
 id or a file name — every value comes from a tool result or from the user. If you are unsure, STOP and ask the user.**
+
+**The approval system, before anything else:** a submission is the END of your job. The owner alone reviews it and
+puts it live (ONE press in his app, on his time); nothing is public before that. There is nothing for you to publish,
+host, deploy, push, build or ask about afterwards — none of that exists in this system. When a submission succeeds you
+tell the user, in these words, **"Submission complete, there's no more for me to do."** — and you stop.
 
 The user's request is: `$ARGUMENTS` (may be empty — then ask).
 
@@ -148,16 +153,25 @@ Print: `✔ step 6: validated (round <k>)`
 
 Call `snake_evolve_submit_proposal` with `{"proposalId"}`. The result's `proposal` shows `status: "pending"` and its
 `baseCommitSha` (the node you chose). If `stale: true` appears, that is fine: the owner's deploy replays your change
-onto the live head.
+onto the live head. The result also carries `done: true` and a `next` sentence — that sentence is the whole of what is
+left, and it is addressed to you: stop.
 
 Print: `✔ step 7: submitted; base <ref>; the owner's DEPLOY finishes it`
 
-## Step 8 · Tell the user what happens now
+## Step 8 · Stop — the approval system
 
-Say, in three lines: the fruit is **pending** until the owner presses DEPLOY in his app; when he does, it goes live
-on the game and appears on https://chimpvibe.dev/<slug>/tree with their name and the title; to change it, do **not**
-resubmit — begin a **new** proposal from the head (Step 2) when it is live. There is no "revise" tool. Do not submit the
-same change twice.
+Say to the user, first, in exactly these words: **"Submission complete, there's no more for me to do."**
+
+Then, in three short lines: the fruit is **pending** and not public until the owner presses DEPLOY in his app (his
+decision, on his time — nobody can hurry it and there is no way to check other than looking at the tree later); when he
+does, it goes live on the game and appears on https://chimpvibe.dev/<slug>/tree with their name and the title; to change
+it later, do **not** resubmit — begin a **new** proposal from the head (Step 2) once it is live. There is no "revise" tool.
+Do not submit the same change twice.
+
+**Nothing after submit is yours to do.** Do not publish, host, deploy, build a page, push to any repo or GitHub Pages,
+open a pull request, write a README, "make it available", zip it, or ask the user where to host it — none of those exist
+in this system; the owner's DEPLOY is the only way anything goes live, and he does it from his own app. Do not poll
+`chimpvibe_tree` waiting for it. Do not start another workspace unless the user asks for a new change.
 
 Print: `✔ step 8: done`
 
@@ -166,7 +180,9 @@ Print: `✔ step 8: done`
 Ask for: title (≤ 80), a blurb (≤ 400), the https URL where it is playable, optionally a repo URL and a PNG capture.
 Check the URL answers. Call `chimpvibe_submit_game` with `{title, blurb, host[, repo][, art_png_base64]}`. Then
 `chimpvibe_my_submissions` to show its `pending` state. Print: `✔ step N: submitted "<title>" — pending the owner's
-DEPLOY`. Stop.
+DEPLOY`. Then say, in exactly these words, **"Submission complete, there's no more for me to do."** — and stop. The game
+stays hosted where it already is (the `host` URL); you do not host, publish, deploy or move it anywhere, and you do not
+build a page for it — the owner's DEPLOY gives it `chimpvibe.dev/<name>`.
 
 ## Identification — how nodes are named
 
@@ -211,4 +227,6 @@ Every error from the server also carries a `remedy` field — it says the same t
 - Never ask the user to install anything while the `mcp__chimpvibe__*` tools are in your tool list.
 - Never invent a `sessionId`, a `baseRef` or a `proposalId` — every one of them comes from a tool result.
 - Never skip validation, never submit twice, never patch files outside `game/`.
+- Never publish, host, deploy, push, build a page, open a PR or ask about hosting after a submission — the owner alone
+  deploys. A successful submission ends with "Submission complete, there's no more for me to do." and nothing else.
 - Never ask the user for their token, and never print it.
