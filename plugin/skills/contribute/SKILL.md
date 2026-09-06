@@ -46,6 +46,9 @@ Call `chimpvibe_whoami` with `{}` (the tool `mcp__chimpvibe__chimpvibe_whoami`).
 - Only if that tool does NOT exist in your tool list at all: tell the user the kit is not installed — the install lines
   are `claude plugin marketplace add burhama/chimpvibe-kit` then `claude plugin install chimpvibe@chimpvibe-kit
   --config token=<token>` — and STOP.
+- If the call answers with a 401 / "a valid ChimpVibe member token is required": the plugin has no token (or a revoked
+  one). Tell the user to open **https://chimpvibe.dev/join**, mint their own token (shown once), and run the second install
+  line the page gives them; then start again. STOP.
 - If the call returns an error: show the user the exact error text and STOP.
 - If any game shows `tokenWorks: false`: tell the user its `remedy` (the owner re-issues their kit). STOP.
 - Note `workspaces` per game: a game allows 3 open workspaces. If 3 are listed, the user must let one expire (1 h idle)

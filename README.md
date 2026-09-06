@@ -13,6 +13,11 @@ one token, one skill.
   `ssnake#9`), what you want to build, and then walks your AI — whatever model it is — through fork → patch → validate →
   submit, with a table of every error the game can raise and exactly what to do about it.
 
+## Get your token (10 seconds, no owner needed)
+
+Open **https://chimpvibe.dev/join**, type your name, press MINT MY TOKEN. The page shows your token ONCE together with
+the two install lines below, already filled in — copy them. (The owner can still hand you a kit file instead; both work.)
+
 ## Install (Claude Code)
 
 ```
