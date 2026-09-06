@@ -80,7 +80,9 @@ Print, only once the base is decided: `✔ step 2: base = <ref> ("<title>" by <a
 ## Step 3 · Get the exact fork call
 
 Call `chimpvibe_fork_from` with `{"slug": "<slug>", "ref": "<ref>"}`. The result holds `call` and `args`
-(`baseRef`, `intent`). **Copy `args.baseRef` verbatim** — it is the node's commit.
+(`baseRef`, `intent`, and — when the site fronts several games — `sessionId`). **Copy `args` verbatim**: `baseRef` is the
+node's commit, `sessionId` names the game's own host (several games share the same tool names; the server routes your
+calls by it). Never add a `sessionId` the result did not give you; never drop one it did.
 
 Print: `✔ step 3: baseRef = <first 8 chars of args.baseRef>…`
 
@@ -95,8 +97,9 @@ in that case.
 Write the `intent`: **the first sentence is the public title** (≤ 80 characters, plain words), then one or two
 sentences explaining the change. If the user's request is unclear, ask ONE question, then write it.
 
-Call `snake_evolve_begin_proposal` with `{"baseRef": "<args.baseRef>", "intent": "<intent>"}`. Keep the returned
-workspace `id` (it starts with `proposal-`); every later call needs it as `proposalId`.
+Call `snake_evolve_begin_proposal` with fork_from's `args` plus your `intent` — `{"baseRef": "<args.baseRef>", "intent":
+"<intent>"}` and, if fork_from gave one, `"sessionId": "<args.sessionId>"`. Keep the returned workspace `id` (it starts
+with `proposal-`); every later call needs it as `proposalId` (the server remembers which host holds it).
 
 Print: `✔ step 4: workspace <id>, intent "<first sentence>"`
 
@@ -170,7 +173,8 @@ DEPLOY`. Stop.
   building on an older node is fine too (the owner's deploy replays your change onto whatever is live by then).
 - `baseRef` — the 40-hex commit behind a ref. You never type it: `chimpvibe_fork_from` gives it to you.
 - `proposalId` — your workspace, `proposal-…`, from `snake_evolve_begin_proposal`.
-- `sessionId` — not needed. Omit it. Never invent one.
+- `sessionId` — the game's host, given by `chimpvibe_fork_from` (`args.sessionId`) when the site fronts several games. Copy
+  it into `snake_evolve_begin_proposal` verbatim; never invent one; omit it only when fork_from gave none.
 
 ## ERROR → REMEDY
 
@@ -189,7 +193,7 @@ DEPLOY`. Stop.
 | `PROPOSAL_STATE_INVALID` | this workspace is already submitted — begin a new one for a new change |
 | `BASE_REF_INVALID` / `BASE_REF_UNKNOWN` | `baseRef` must come verbatim from `chimpvibe_fork_from` — repeat Steps 2–3 |
 | `PROPOSAL_BASE_MISMATCH` | the head moved — nothing to do, keep going |
-| `SESSION_NOT_FOUND` | you passed a `sessionId` — omit it |
+| `SESSION_NOT_FOUND` | the `sessionId` is not one the server gave you — repeat Step 3 and copy `args` verbatim |
 | `UNAUTHORIZED` / `tokenWorks: false` | the token is not on the game's registry — the owner re-issues the kit |
 | `INTERNAL_ERROR` | wait a minute, retry once; then tell the user to report it |
 
@@ -202,6 +206,6 @@ Every error from the server also carries a `remedy` field — it says the same t
 - Never hand the tool calls to a subagent / Agent / Task — make every call yourself, in this conversation, so every
   id, ref and gate stays in front of the user (a delegated call loses them and the next step starts from a guess).
 - Never ask the user to install anything while the `mcp__chimpvibe__*` tools are in your tool list.
-- Never pass `sessionId`, a made-up `baseRef`, a made-up `proposalId`.
+- Never invent a `sessionId`, a `baseRef` or a `proposalId` — every one of them comes from a tool result.
 - Never skip validation, never submit twice, never patch files outside `game/`.
 - Never ask the user for their token, and never print it.

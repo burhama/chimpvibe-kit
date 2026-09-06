@@ -1,7 +1,7 @@
 {
   "name": "chimpvibe",
   "description": "Contribute to the games on chimpvibe.dev — the ONE server (chimpvibe.dev/mcp) and the contribute wizard.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": { "name": "ChimpVibe", "url": "https://chimpvibe.dev" },
   "homepage": "https://chimpvibe.dev",
   "repository": "https://github.com/burhama/chimpvibe-kit",

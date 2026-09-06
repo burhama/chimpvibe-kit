@@ -56,10 +56,21 @@ async function postRpc(url, authorization, message, timeoutMs = GAME_TIMEOUT_MS)
   return { status: r.status, message: parsed };
 }
 
+// BEV-7 P2: a node's diff score as the tree document carries it — { added, removed } or null (never a guess)
+const diffOf = (node) => (node?.diff && Number.isInteger(node.diff.added) && Number.isInteger(node.diff.removed) ? { added: node.diff.added, removed: node.diff.removed } : null);
+
 export function createMcp({ dataRoot, catalogNow, readTree, guideText, version = '1.0', gameMcpUrl = (p) => p.fork?.mcp || null }) {
   // the games this server fronts: every catalog project with a fork route that names an MCP url
-  const games = () => catalogNow().filter((p) => p.fork && gameMcpUrl(p)).map((p) => ({ slug: p.slug, server: p.fork.server, url: gameMcpUrl(p), name: p.name || p.slug }));
+  const games = () => catalogNow().filter((p) => p.fork && gameMcpUrl(p)).map((p) => ({ slug: p.slug, server: p.fork.server, url: gameMcpUrl(p), name: p.name || p.slug, sessionId: p.fork.sessionId || null }));
   const gameToolCache = new Map(); // url → { at, tools }
+  // BEV-7 P6: several games serve the SAME tool names (one Snake Evolve host per game). A forwarded call goes to the game
+  // its arguments name: `sessionId` (chimpvibe_fork_from puts the game's session id in the begin call) → that game;
+  // `proposalId` → the game that answered for that proposal before (remembered here from every reply); otherwise every
+  // game that has the tool is asked in catalog order and a PROPOSAL_NOT_FOUND moves on to the next. One game = as before.
+  const proposalHome = new Map(); // proposalId → game url
+  const PROPOSAL_ID = /proposal-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
+  const remember = (game, result) => { try { for (const item of result?.content || []) if (item?.type === 'text') for (const m of String(item.text).match(PROPOSAL_ID) || []) proposalHome.set(m, game.url); } catch {} };
+  const errorCodeOf = (result) => { try { const body = JSON.parse(result?.content?.[0]?.text || ''); return body?.error?.code || body?.code || null; } catch { return null; } };
   async function gameTools(game, authorization) {
     const cached = gameToolCache.get(game.url);
     if (cached && Date.now() - cached.at < 60_000) return cached.tools;
@@ -113,7 +124,7 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
     { name: 'chimpvibe_whoami', description: 'Call this FIRST. Who you are on ChimpVibe, which games this one token opens (each checked live), how many tools each game offers, your open workspaces and submissions, and the next call to make.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
     { name: 'chimpvibe_guide', description: 'What ChimpVibe is, how its trees work, and exactly how to contribute a fork or a new game. Read this first.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
     { name: 'chimpvibe_games', description: 'Every project slot on chimpvibe.dev: slug, name, status, host, and how many nodes its public tree has.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-    { name: 'chimpvibe_tree', description: 'The public tree of one project, newest first: every approved node with its identifier (ref, e.g. ssnake#9), id, parent, branch, author, title, blurb, download, and which one the game runs (running). Pick a ref here before you fork.', inputSchema: { type: 'object', properties: { slug: { type: 'string', description: 'project slug, e.g. ssnake' } }, required: ['slug'], additionalProperties: false } },
+    { name: 'chimpvibe_tree', description: 'The public tree of one project, newest first: every approved node with its identifier (ref, e.g. ssnake#9), id, parent, branch, author, title, blurb, diff (lines {added, removed} vs its parent), download, and which one the game runs (running). Pick a ref here before you fork.', inputSchema: { type: 'object', properties: { slug: { type: 'string', description: 'project slug, e.g. ssnake' } }, required: ['slug'], additionalProperties: false } },
     { name: 'chimpvibe_fork_from', description: 'Fork a project from one node: give its ref (e.g. "ssnake#9", from chimpvibe_tree) and get back the EXACT snake_evolve_begin_proposal call to make next — copy its args verbatim (baseRef is that node\'s commit).', inputSchema: { type: 'object', properties: { slug: { type: 'string' }, ref: { type: 'string', description: 'node identifier from chimpvibe_tree, e.g. ssnake#9' }, node: { type: 'string', description: 'alternatively the 40-hex node id' } }, required: ['slug'], additionalProperties: false } },
     { name: 'chimpvibe_submit_game', description: 'Submit a NEW game to ChimpVibe (pending until the owner deploys it). Needs a title, a short blurb, and a reachable https host where the game is playable; optionally a repo URL and a PNG capture (base64, ≤ 2 MB, 16:9 looks best).', inputSchema: { type: 'object', properties: { title: { type: 'string', maxLength: 80 }, blurb: { type: 'string', maxLength: 400 }, host: { type: 'string', description: 'https URL of the playable game' }, repo: { type: 'string', description: 'optional https URL of the source' }, art_png_base64: { type: 'string', description: 'optional PNG capture, base64' } }, required: ['title', 'blurb', 'host'], additionalProperties: false } },
     { name: 'chimpvibe_my_submissions', description: 'Your own game submissions and their state (pending · deployed · rejected).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -153,7 +164,8 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
         if (!SLUG.test(slug) || !catalogNow().some((p) => p.slug === slug)) return fail(`unknown project: ${slug}`);
         const tree = readTree(slug);
         const running = tree.running || null;
-        const nodes = tree.nodes.map((n) => ({ ref: n.ref || null, id: n.id, parent: n.parent, branch: n.branch, author: n.author, title: n.label, blurb: n.blurb || n.label, at: n.at, running: Boolean(running && n.id === running), download: `https://chimpvibe.dev${n.download}` }));
+        // BEV-7 P2: diff = { added, removed } lines vs the parent (the root: its own size); null when the node was not scored
+        const nodes = tree.nodes.map((n) => ({ ref: n.ref || null, id: n.id, parent: n.parent, branch: n.branch, author: n.author, title: n.label, blurb: n.blurb || n.label, at: n.at, diff: diffOf(n), running: Boolean(running && n.id === running), download: `https://chimpvibe.dev${n.download}` }));
         nodes.sort((x, y) => String(y.at || '').localeCompare(String(x.at || '')));
         return text({ slug, root: tree.root, head: nodes.find((n) => n.running)?.ref || null, nodes, how: 'fork one of these: chimpvibe_fork_from {"slug":"' + slug + '","ref":"<ref>"}' });
       }
@@ -177,11 +189,15 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
           if (!found) return fail('that node is not on the public tree (only approved nodes can be forked)');
         }
         if (!project.fork) return fail(`${project.name || slug} has no fork route yet — only games with their own MCP server can be forked`);
+        // BEV-7 P6: the begin call names the game's session (sessionId) so the ONE server forwards it to THAT game's host
+        const sessionId = project.fork.sessionId || null;
+        const sessionArg = sessionId ? `"sessionId":"${sessionId}",` : '';
         return text({
           server: project.fork.server, call: project.fork.tool,
-          args: { baseRef: found.id, intent: '<A short title for your change (one sentence, ≤ 80 characters). Then explain the change plainly.>' },
-          base: { ref: found.ref || null, id: found.id, branch: found.branch, title: found.label, author: found.author },
-          note: `Next call, verbatim: ${project.fork.tool} {"baseRef":"${found.id}","intent":"<title sentence. Then the change.>"} — your workspace starts as node ${found.ref || found.id.slice(0, 8)} ("${found.label}" by ${found.author}); when the owner deploys, your change is replayed onto whatever is live by then. The first sentence of your intent becomes the public title; the whole intent is the card's blurb. Then: list/read/search_source → apply_patch (new revision id first) → validate until "validated" → submit_proposal.`,
+          mcp: gameMcpUrl(project), sessionId,
+          args: { ...(sessionId ? { sessionId } : {}), baseRef: found.id, intent: '<A short title for your change (one sentence, ≤ 80 characters). Then explain the change plainly.>' },
+          base: { ref: found.ref || null, id: found.id, branch: found.branch, title: found.label, author: found.author, diff: diffOf(found) },
+          note: `Next call, verbatim: ${project.fork.tool} {${sessionArg}"baseRef":"${found.id}","intent":"<title sentence. Then the change.>"} — your workspace starts as node ${found.ref || found.id.slice(0, 8)} ("${found.label}" by ${found.author}) on ${project.name || slug}; when the owner deploys, your change is replayed onto whatever is live by then. The first sentence of your intent becomes the public title; the whole intent is the card's blurb. Then: list/read/search_source → apply_patch (new revision id first) → validate until "validated" → submit_proposal (each with the proposalId the begin call returns — the server routes it to the same game).`,
         });
       }
       case 'chimpvibe_submit_game': {
@@ -247,20 +263,30 @@ export function createMcp({ dataRoot, catalogNow, readTree, guideText, version =
           }
         }
         // a game's tool: forwarded verbatim with the member's own bearer; the reply comes back as the game gave it (+ remedy)
-        for (const g of games()) {
-          const gt = await gameTools(g, who.authorization);
-          if (!gt.some((t) => t.name === name)) continue;
+        const args = params?.arguments && typeof params.arguments === 'object' ? params.arguments : {};
+        const holders = [];
+        for (const g of games()) if ((await gameTools(g, who.authorization)).some((t) => t.name === name)) holders.push(g);
+        if (!holders.length) return error(-32602, `unknown tool: ${name}`);
+        // which game (BEV-7 P6): by sessionId, then by the proposal's remembered home, else every holder in order
+        let order = holders;
+        if (typeof args.sessionId === 'string' && holders.some((g) => g.sessionId === args.sessionId)) order = [holders.find((g) => g.sessionId === args.sessionId)];
+        else if (typeof args.proposalId === 'string' && proposalHome.has(args.proposalId) && holders.some((g) => g.url === proposalHome.get(args.proposalId))) order = [holders.find((g) => g.url === proposalHome.get(args.proposalId)), ...holders.filter((g) => g.url !== proposalHome.get(args.proposalId))];
+        const tryNext = order.length > 1 && typeof args.proposalId === 'string'; // only a proposal lookup can miss on one game and hit on another
+        let lastReply = null;
+        for (const g of order) {
           try {
-            const { status, message } = await postRpc(g.url, who.authorization, { jsonrpc: '2.0', id: id ?? 1, method: 'tools/call', params: { name, arguments: params?.arguments || {} } });
+            const { status, message } = await postRpc(g.url, who.authorization, { jsonrpc: '2.0', id: id ?? 1, method: 'tools/call', params: { name, arguments: args } });
             if (status === 401 || status === 403) return reply(fail(`the game ${g.name} refused your token — ${REMEDIES.UNAUTHORIZED}`));
             if (!message) return reply(fail(`the game ${g.name} answered ${status} with no JSON-RPC message — wait a minute and try once more`));
             if (message.error) return error(message.error.code ?? -32000, `${g.name}: ${message.error.message || 'error'}`);
+            if (tryNext && message.result?.isError && errorCodeOf(message.result) === 'PROPOSAL_NOT_FOUND') { lastReply = reply(withRemedy(message.result)); continue; }
+            remember(g, message.result);
             return reply(withRemedy(message.result));
           } catch (e) {
             return reply(fail(`the game ${g.name} did not answer (${String(e?.message || e).slice(0, 120)}) — wait a minute and try once more; if it repeats, tell the owner`));
           }
         }
-        return error(-32602, `unknown tool: ${name}`);
+        return lastReply || error(-32602, `unknown tool: ${name}`);
       }
       default: return error(-32601, `method not found: ${method}`);
     }
