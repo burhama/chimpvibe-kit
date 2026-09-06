@@ -16,7 +16,7 @@ one token, one skill.
 ## Get your token (10 seconds, no owner needed)
 
 Open **https://chimpvibe.dev/join**, type your name, press MINT MY TOKEN. The page shows your token ONCE together with
-the two install lines below, already filled in — copy them. (The owner can still hand you a kit file instead; both work.)
+the two install lines below, already filled in — copy them. That is the only way in: the owner no longer mints kits.
 
 ## Install (Claude Code)
 
