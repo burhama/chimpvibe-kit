@@ -110,7 +110,7 @@ Read before you write: `snake_evolve_list_source` (`{"proposalId"}`), then `snak
 to find things.
 
 **The game at your base may not be what the user assumes.** A node can carry a whole different game — the running build
-has been replaced wholesale before (`ssnake#14` turned the snake into a swarm shooter). Read the manifest in
+has been replaced wholesale before (a swarm shooter once sat on Ssnake's tree; it now has its own tree, `lumencoil`). Read the manifest in
 `game/revisions/` (`title`, `summary`, `client.entry`) before patching. If the mechanic the user named does not exist in the
 game this node runs (no food, no score, no snake…), do NOT invent a stand-in and do NOT guess: say what this node's game is,
 name the newest node from Step 2's list whose title fits the ask (or propose the nearest equivalent inside this game), and
