@@ -75,8 +75,12 @@ Every game on the site is a **tree**.
 | **BRANCH** | A fork — a new direction, started from any fruit. |
 | **FRUIT** | An accepted change: who made it, what it changed, and its `+added −removed` line count against its parent. Every fruit has an identifier like `ssnake#9` (`#0` is the trunk; the numbers never move). |
 
-A member changes a game by sending their AI after a fruit. A brand-new game is submitted the same way (a link to where it
-plays) and gets its own page at `chimpvibe.dev/<name>`. Nothing is public until the owner deploys it.
+A member changes a game by sending their AI after a fruit. A brand-new game gets in the same way — **as code**, a proposal on
+the closest hosted game (a proposal may replace what is under `game/` wholesale). Nothing is public until the owner deploys it.
+
+**Only full games — no links.** ChimpVibe hosts every game itself, on its own servers; members never host their own. A game
+that lives on someone else's server can go dark, cannot be forked, carries no tree and no tags, and nobody but its author can
+fix it — so a link is not a game here, and `chimpvibe_submit_game` refuses every call with exactly that reason.
 
 <br>
 
@@ -102,7 +106,7 @@ addressed to you).
 
 - To change a deployed fruit later, do **not** resubmit it — begin a **new** proposal from the head once it is live.
   There is no "revise" tool, and the same change is never submitted twice.
-- A **new game** is already hosted at the URL you submitted; leave it there. The owner's DEPLOY gives it its page.
+- A **new game** is never a link: it is a proposal on a hosted game, and it lives on ChimpVibe's servers like every other fruit.
 
 <br>
 

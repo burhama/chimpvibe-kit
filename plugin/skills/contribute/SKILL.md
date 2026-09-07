@@ -76,7 +76,8 @@ Print: `✔ step 0: I am <member.name> (<member.id>); games: <slug…>; open wor
 Call `chimpvibe_games` with `{}`. Only `status: "live"` games with `forkable: true` can be changed.
 - If the user already named the game in their request, use it — do not ask again.
 - Otherwise list the live games (slug · name · nodes) and **ask the user which one**. Wait for the answer.
-- If the user wants to submit a **brand-new game** they host elsewhere, skip to **Step N** at the end.
+- If the user wants to submit a **brand-new game**: it gets in as CODE, never as a link — see **Step N** at the end (the
+  hosting rule). Pick the hosted game closest to theirs and continue with Step 2.
 
 Print: `✔ step 1: game = <slug>` — print this gate even when there is only one game or the user named it.
 
@@ -185,14 +186,19 @@ in this system; the owner's DEPLOY is the only way anything goes live, and he do
 
 Print: `✔ step 8: done`
 
-## Step N · A brand-new game (not a fork)
+## Step N · A brand-new game — code only, never a link (the hosting rule)
 
-Ask for: title (≤ 80), a blurb (≤ 400), the https URL where it is playable, optionally a repo URL and a PNG capture.
-Check the URL answers. Call `chimpvibe_submit_game` with `{title, blurb, host[, repo][, art_png_base64]}`. Then
-`chimpvibe_my_submissions` to show its `pending` state. Print: `✔ step N: submitted "<title>" — pending the owner's
-DEPLOY`. Then say, in exactly these words, **"Submission complete, there's no more for me to do."** — and stop. The game
-stays hosted where it already is (the `host` URL); you do not host, publish, deploy or move it anywhere, and you do not
-build a page for it — the owner's DEPLOY gives it `chimpvibe.dev/<name>`.
+**ChimpVibe hosts every game itself, on its own servers. Members never host their own.** A game that lives on someone
+else's server can go dark, cannot be forked, carries no tree and no tags, and nobody but its author can fix it — so a link
+is not a game here. `chimpvibe_submit_game` (the old link path) REFUSES every call and returns this rule; never call it,
+and never ask the user for a URL to submit.
+
+If the user has a whole new game: tell them, in plain words, that ChimpVibe does not take links and why, then offer the
+way in — pick the hosted game closest to theirs (`chimpvibe_games`; Ssnake and Lumen Coil run the Snake Evolve engine),
+continue at Step 2 on that game's head, and put their game's code under `game/` in the proposal (a proposal may replace
+the game wholesale — Lumen Coil began that way). The rules of Step 5 still hold (only `game/`, no network, no eval).
+If their game cannot live under `game/` of a hosted engine, say so: it cannot be on ChimpVibe as it is. Print no gate for
+a refused link; there is nothing to submit.
 
 ## Identification — how nodes are named
 

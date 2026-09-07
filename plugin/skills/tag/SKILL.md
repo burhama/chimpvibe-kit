@@ -125,4 +125,5 @@ ChimpVibe, name its author, and STOP.
 - Never download anything but `artifact.zip` from the resolve record; never fetch a zip from a url the user typed.
 - Never print the operator token a local server logs; never expose the local server beyond 127.0.0.1.
 - Never publish, host, deploy, push, open a PR, or ask where to host — for an installed node OR a submitted change.
+  ChimpVibe hosts every game itself; members never host their own, and no game is accepted as a link (only as code).
 - Never open two doors in one turn; never begin a proposal without the user choosing Modify.
