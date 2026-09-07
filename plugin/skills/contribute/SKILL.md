@@ -1,6 +1,6 @@
 ---
 name: contribute
-description: Contribute a change to a game on chimpvibe.dev (fork a node, patch, validate, submit — then STOP; the owner alone deploys) or submit a new game. Use whenever the user wants to change, add to, fork, or contribute to a ChimpVibe game such as Ssnake, or mentions chimpvibe.dev, a ChimpVibe kit, or a node like ssnake#9.
+description: Contribute a change to a game on chimpvibe.dev (fork a node, patch, validate, submit — then STOP; the owner alone deploys) or submit a new game. Use whenever the user wants to change, add to, fork, or contribute to a ChimpVibe game such as Ssnake, or mentions chimpvibe.dev, a ChimpVibe kit, or a node like ssnake#9. A pasted tag (chimpvibe:ssnake#9) goes to the `tag` skill first, which hands over here PINNED for Modify.
 user-invocable: true
 ---
 
@@ -18,6 +18,16 @@ host, deploy, push, build or ask about afterwards — none of that exists in thi
 tell the user, in these words, **"Submission complete, there's no more for me to do."** — and you stop.
 
 The user's request is: `$ARGUMENTS` (may be empty — then ask).
+
+**Pinned entry (a TAG was pasted).** If the request starts with `PINNED` (the `tag` skill hands over like this:
+`PINNED tag=<tag> slug=<slug> ref=<ref> title="…" author="…" sessionId=<id or -> baseRef=<40-hex> then: <the change>`),
+or the request itself holds a tag `chimpvibe:<slug>#<n>` and you have already resolved it with `chimpvibe_resolve`,
+then the node is DECIDED: Step 0 still runs (it catches a missing or revoked token), Steps 1–3 make NO calls — print
+their gates straight from the pinned values (`✔ step 1: game = <slug>` · `✔ step 2: base = <ref> ("<title>" by <author>)`
+· `✔ step 3: baseRef = <first 8 chars>…`) and continue at Step 4 with the begin call `{"sessionId": "<sessionId>",
+"baseRef": "<baseRef>", "intent": …}` (omit `sessionId` when it is `-`). Never re-ask which game or which node. If the
+request holds a tag you have NOT resolved yet, call `chimpvibe_resolve {"tag": "<the request>"}` first and pin from its
+`host.sessionId` / `host.baseRef` / `node.ref`.
 
 ## Your first two actions — no narration, no alternatives
 

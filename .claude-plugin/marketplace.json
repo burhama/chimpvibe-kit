@@ -6,7 +6,7 @@
     {
       "name": "chimpvibe",
       "source": "./plugin",
-      "description": "Contribute to the games on chimpvibe.dev: one server, one token, one wizard skill that walks any AI through fork → patch → validate → submit — then stops; the owner deploys."
+      "description": "The games on chimpvibe.dev, one tag away: paste a fruit's tag and your AI installs it locally, explains it, or modifies it (fork → patch → validate → submit — then stops; the owner deploys). One server, one token."
     }
   ]
 }

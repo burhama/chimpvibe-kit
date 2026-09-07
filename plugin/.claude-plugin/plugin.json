@@ -1,7 +1,7 @@
 {
   "name": "chimpvibe",
-  "description": "Contribute to the games on chimpvibe.dev — the ONE server (chimpvibe.dev/mcp) and the contribute wizard: fork → patch → validate → submit, then the owner deploys.",
-  "version": "1.4.0",
+  "description": "The games on chimpvibe.dev, one tag away — paste a fruit's tag (chimpvibe:ssnake#9) and Install / Ask about / Modify that exact build through the ONE server (chimpvibe.dev/mcp); the contribute wizard: fork → patch → validate → submit, then the owner deploys.",
+  "version": "1.5.0",
   "author": { "name": "ChimpVibe", "url": "https://chimpvibe.dev" },
   "homepage": "https://chimpvibe.dev",
   "repository": "https://github.com/burhama/chimpvibe-kit",

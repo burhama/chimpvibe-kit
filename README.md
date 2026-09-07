@@ -6,7 +6,7 @@
 
 <p align="center">
   The Claude Code plugin behind <a href="https://chimpvibe.dev"><b>chimpvibe.dev</b></a> — a home for community games.<br>
-  <b>One server. One token. One skill.</b> Send your AI after a fruit; the owner puts your change live.
+  <b>One server. One token. One tag.</b> Click a fruit's tag on the site, paste it to your AI — it installs, explains or modifies that exact build; the owner puts your change live.
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 |---|---|---|
 | **01** | **Mint your token.** | Open **[chimpvibe.dev/join](https://chimpvibe.dev/join)**, type the name that will sit beside your changes, press MINT MY TOKEN. Your token is shown **once**, together with the two install lines below already filled in. The owner never mints for you. |
 | **02** | **Paste the two lines into Claude Code.** | Run them in its terminal — they install this plugin with your token. |
-| **03** | **Say `/chimpvibe:contribute`.** | The wizard walks your AI from a fruit to a submission. Then the owner deploys. |
+| **03** | **Copy a tag, paste it to your AI.** | Every fruit on [chimpvibe.dev](https://chimpvibe.dev) shows a tag like `chimpvibe:ssnake#9` — click it, it is copied. Paste it into Claude Code: the kit offers **Install · Ask about · Modify** that exact build. (`/chimpvibe:contribute` still walks a contribution step by step.) |
 
 ```
 claude plugin marketplace add burhama/chimpvibe-kit
@@ -41,9 +41,27 @@ claude mcp add --transport http chimpvibe https://chimpvibe.dev/mcp --header "Au
 ```
 
 …or the equivalent `mcpServers` entry (`url: https://chimpvibe.dev/mcp`, header `Authorization: Bearer <your token>`).
-Then give your AI the text of [`plugin/skills/contribute/SKILL.md`](plugin/skills/contribute/SKILL.md) and say
-"contribute". The server's own `chimpvibe_guide` tool carries the same steps.
+Then give your AI the text of [`plugin/skills/tag/SKILL.md`](plugin/skills/tag/SKILL.md) (a pasted tag) and
+[`plugin/skills/contribute/SKILL.md`](plugin/skills/contribute/SKILL.md) (the wizard). The server's own `chimpvibe_guide`
+tool and its `initialize` instructions carry the same steps — a bare MCP client that pastes a tag is told the three doors too.
 </details>
+
+<br>
+
+## The tag — one name, three doors
+
+Every accepted node on the site carries ONE copyable name: `chimpvibe:<slug>#<n>` — for example `chimpvibe:ssnake#9`
+(the game's slug, the fruit's number in accept order; `#0` is the trunk). Click it on a fruit's card, paste it to your AI:
+
+| you paste | the kit does |
+|---|---|
+| `chimpvibe:ssnake#9` | resolves it (`chimpvibe_resolve`) and offers **1. Install Ssnake · 2. Ask about Ssnake · 3. Modify Ssnake** — pick one |
+| **Install** | fetches that exact build (a zip the site serves, sha256-checked), `npm install`, starts it on a free port on your machine — no Docker, no git, no token needed — and hands you `http://127.0.0.1:<port>/` |
+| **Ask about** | reads the node's own code (`game/` is the game, `server/` + `client/` the engine) and answers from it, citing files |
+| **Modify** | opens the contribute wizard already pinned to that node's host and base commit, so your proposal lands on the right branch — patch → validate → submit → the owner deploys |
+
+No kit yet? `https://chimpvibe.dev/api/tag/chimpvibe:ssnake%239` returns the same record to any AI (Install and Ask work
+without a token; Modify needs one from [chimpvibe.dev/join](https://chimpvibe.dev/join)).
 
 <br>
 
@@ -90,6 +108,7 @@ addressed to you).
 
 ## How a contribution flows (what the wizard does)
 
+0. A pasted tag → `chimpvibe_resolve {tag}` → Install / Ask / Modify (the `tag` skill); Modify continues below, pinned.
 1. `chimpvibe_whoami` — who you are, which games your token opens.
 2. `chimpvibe_games` → `chimpvibe_tree {slug}` — the public tree; every node has a ref like `ssnake#9`; `head` is the running build.
 3. `chimpvibe_fork_from {slug, ref}` — the exact `snake_evolve_begin_proposal` call (its `baseRef` is that node; its `sessionId`, when given, names the game's host — copy `args` verbatim).
@@ -104,13 +123,13 @@ Every error a game can raise comes back with a `remedy` field, and the wizard ca
 
 | path | what |
 |---|---|
-| `plugin/` | the Claude Code plugin: `.mcp.json` (the ONE server, your token from the plugin's config) and `skills/contribute/SKILL.md` (the wizard) |
+| `plugin/` | the Claude Code plugin: `.mcp.json` (the ONE server, your token from the plugin's config), `skills/tag/SKILL.md` (a pasted tag → Install / Ask / Modify) and `skills/contribute/SKILL.md` (the wizard) |
 | `server/mcp.mjs` | the ONE server's source, verbatim as deployed at `https://chimpvibe.dev/mcp` (kept equal by `scripts/sync-server.mjs --check`) |
 | `scripts/check-secrets.mjs` | refuses to commit anything token-shaped — this repo never holds a secret |
 | `art/` | the banner and the approval sheet, drawn by the same tree engine and design tokens as the site |
 
 **One server.** `https://chimpvibe.dev/mcp` fronts every game on the site. Your AI connects once, with your one token, and
-gets the site's tools (`chimpvibe_whoami` · `chimpvibe_guide` · `chimpvibe_games` · `chimpvibe_tree` · `chimpvibe_fork_from` ·
+gets the site's tools (`chimpvibe_whoami` · `chimpvibe_guide` · `chimpvibe_games` · `chimpvibe_tree` · `chimpvibe_resolve` · `chimpvibe_fork_from` ·
 `chimpvibe_submit_game` · `chimpvibe_my_submissions`) **and** every game's own tools (for the Snake Evolve games: `snake_evolve_*`)
 under their own names.
 
