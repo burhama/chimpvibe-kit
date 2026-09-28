@@ -1,14 +1,15 @@
 {
   "name": "chimpvibe-kit",
-  "description": "ChimpVibe tag and native authoring skills for the hosted MCP server.",
   "owner": {
-    "name": "ChimpVibe",
-    "url": "https://chimpvibe.dev"
+    "name": "ChimpVibe"
+  },
+  "metadata": {
+    "description": "ChimpVibe tag and native authoring skills for the hosted MCP server."
   },
   "plugins": [
     {
       "name": "chimpvibe",
-      "source": "./plugin",
+      "source": "plugin",
       "description": "Resolve a ChimpVibe tag to install or inspect a build, or contribute through a native Draft. The owner reviews and publishes; this plugin connects to the hosted MCP."
     }
   ]

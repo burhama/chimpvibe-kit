@@ -1,0 +1,32 @@
+{
+  "name": "chimpvibe",
+  "displayName": "ChimpVibe",
+  "description": "Resolve ChimpVibe tags to install or inspect exact builds, and contribute to admitted native games or start independent games through private Drafts. Follow the live MCP guide; the owner alone reviews and publishes.",
+  "version": "1.6.0",
+  "author": {
+    "name": "ChimpVibe"
+  },
+  "homepage": "https://chimpvibe.dev",
+  "repository": "https://github.com/burhama/chimpvibe-kit",
+  "license": "MIT",
+  "keywords": [
+    "chimpvibe",
+    "games",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./mcp.json",
+  "variables": {
+    "type": "object",
+    "properties": {
+      "CHIMPVIBE_TOKEN": {
+        "type": "string",
+        "title": "ChimpVibe member token",
+        "description": "The token you minted at https://chimpvibe.dev/join (shown once). It is yours alone; it never leaves your machine except as the Authorization header to chimpvibe.dev. Set it in Cursor on the plugin's Configure page. Do not paste it into chat."
+      }
+    },
+    "required": [
+      "CHIMPVIBE_TOKEN"
+    ]
+  }
+}

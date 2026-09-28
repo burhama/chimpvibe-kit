@@ -1,0 +1,14 @@
+{
+  "name": "chimpvibe",
+  "displayName": "ChimpVibe",
+  "version": "1.6.0",
+  "description": "Resolve ChimpVibe tags to install or inspect exact builds, and contribute to admitted native games or start independent games through private Drafts. Follow the live MCP guide; the owner alone reviews and publishes.",
+  "author": { "name": "ChimpVibe", "url": "https://chimpvibe.dev" },
+  "homepage": "https://chimpvibe.dev",
+  "repository": "https://github.com/burhama/chimpvibe-kit",
+  "license": "MIT",
+  "keywords": ["chimpvibe", "games", "mcp"],
+  "marketplace": "chimpvibe-kit",
+  "marketplaceDescription": "ChimpVibe tag and native authoring skills for the hosted MCP server.",
+  "pluginSummary": "Resolve a ChimpVibe tag to install or inspect a build, or contribute through a native Draft. The owner reviews and publishes; this plugin connects to the hosted MCP."
+}

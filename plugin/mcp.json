@@ -4,7 +4,7 @@
       "type": "http",
       "url": "https://chimpvibe.dev/mcp",
       "headers": {
-        "Authorization": "Bearer ${user_config.token}"
+        "Authorization": "Bearer ${CHIMPVIBE_TOKEN}"
       }
     }
   }
