@@ -23,7 +23,9 @@ function walk(dir) {
     if (SKIP.has(entry.name)) continue;
     const p = join(dir, entry.name);
     if (entry.isDirectory()) { walk(p); continue; }
-    if (statSync(p).size > 2 * 1024 * 1024) continue;
+    const st = statSync(p);
+    if (st.isDirectory()) continue;
+    if (st.size > 2 * 1024 * 1024) continue;
     const text = readFileSync(p, 'utf8');
     for (const rule of RULES) {
       const m = rule.re.exec(text);

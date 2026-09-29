@@ -5,9 +5,9 @@
 //   node scripts/render-plugins.mjs           write the client files
 //   node scripts/render-plugins.mjs --check   exit 1 if a client file drifted
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { lstatSync, mkdirSync, readFileSync, readlinkSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { loadShared, renderFiles } from './platforms.mjs';
+import { loadShared, renderFiles, renderLinks } from './platforms.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const check = process.argv.includes('--check');
@@ -29,6 +29,22 @@ for (const [rel, value] of rendered) {
   }
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, text);
+}
+
+for (const [from, to] of renderLinks()) {
+  const path = resolve(root, from);
+  let current = '';
+  try {
+    current = lstatSync(path).isSymbolicLink() ? readlinkSync(path) : `not a symlink: ${from}`;
+  } catch {
+    current = '';
+  }
+  if (current === to) continue;
+  if (check || current) {
+    drifted.push(current ? `${from} -> ${current}` : from);
+    continue;
+  }
+  symlinkSync(to, path, 'dir');
 }
 
 if (drifted.length) {

@@ -4,6 +4,8 @@
 // live in shared/. This module renders each client's manifest, marketplace
 // entry, and MCP config from those records. Claude Code, Cursor, and Codex
 // install the plugin/ directory, so they share the skill files directly.
+// Gemini CLI installs the repository root, so its adapter also links skills/
+// at that root to plugin/skills/.
 //
 // To add a client:
 // 1. Append an adapter to `platforms`. Read only `meta` and `connection`;
@@ -166,12 +168,42 @@ function codexFiles({ meta, connection }) {
   ];
 }
 
+function geminiFiles({ meta, connection }) {
+  const token = connection.token;
+  // Gemini redacts environment names containing TOKEN, SECRET, KEY, or AUTH
+  // before it expands MCP headers. CHIMPVIBE_MEMBER is the setting that survives.
+  return [
+    ['gemini-extension.json', {
+      name: meta.name,
+      version: meta.version,
+      description: meta.description,
+      settings: [{
+        name: token.title,
+        description: token.descriptions.gemini,
+        envVar: token.geminiKey,
+        sensitive: true,
+      }],
+      mcpServers: {
+        [connection.serverName]: {
+          httpUrl: connection.url,
+          headers: authorizationHeader(`\${${token.geminiKey}}`),
+        },
+      },
+    }],
+  ];
+}
+
 export const platforms = [
   { id: 'claude', files: claudeFiles },
   { id: 'cursor', files: cursorFiles },
   { id: 'codex', files: codexFiles },
+  { id: 'gemini', files: geminiFiles, links: [['skills', 'plugin/skills']] },
 ];
 
 export function renderFiles(shared) {
   return platforms.flatMap((platform) => platform.files(shared));
+}
+
+export function renderLinks() {
+  return platforms.flatMap((platform) => platform.links ?? []);
 }

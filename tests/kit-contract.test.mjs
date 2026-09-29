@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, lstatSync, readlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
@@ -80,7 +80,7 @@ test('marketplace and plugin metadata agree on a release and optional plugin set
   assert.match(readme, /claude plugin install chimpvibe@chimpvibe-kit --config "token=YOUR_TOKEN"/);
 });
 
-test('Claude, Cursor, and Codex install one skill package and one hosted connection', async () => {
+test('Claude, Cursor, Codex, and Gemini install one skill package and one hosted connection', async () => {
   const { spawnSync } = await import('node:child_process');
   const meta = JSON.parse(read('shared/plugin-meta.json'));
   const connection = JSON.parse(read('shared/connection.json'));
@@ -116,7 +116,18 @@ test('Claude, Cursor, and Codex install one skill package and one hosted connect
   assert.equal(codexMarketplace.plugins[0].name, meta.name);
   assert.equal(codexMarketplace.plugins[0].source.path, './plugin');
   assert.deepEqual(codexMarketplace.plugins[0].policy, { installation: 'AVAILABLE', authentication: 'ON_INSTALL' });
+  const gemini = JSON.parse(read('gemini-extension.json'));
+  assert.equal(gemini.name, meta.name);
+  assert.equal(gemini.version, claudePlugin.version);
+  assert.equal(gemini.mcpServers[connection.serverName].httpUrl, connection.url);
+  assert.equal(gemini.mcpServers.chimpvibe.headers.Authorization, `Bearer \${${connection.token.geminiKey}}`);
+  assert.equal(gemini.settings[0].envVar, connection.token.geminiKey);
+  assert.equal(gemini.settings[0].sensitive, true);
+  assert.doesNotMatch(connection.token.geminiKey, /TOKEN|SECRET|KEY|AUTH/);
+  assert.equal(lstatSync(resolve(root, 'skills')).isSymbolicLink(), true);
+  assert.equal(readlinkSync(resolve(root, 'skills')), 'plugin/skills');
   assert.match(readme, /CHIMPVIBE_TOKEN/);
+  assert.match(readme, /gemini extensions install https:\/\/github.com\/burhama\/chimpvibe-kit/);
   assert.match(readme, /scripts\/platforms\.mjs/);
 
   const check = spawnSync(process.execPath, ['scripts/render-plugins.mjs', '--check'], { cwd: root, encoding: 'utf8' });
