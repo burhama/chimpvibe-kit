@@ -6,7 +6,7 @@
 
 Plugins for [ChimpVibe](https://chimpvibe.dev): resolve a game's tag, install or ask about its exact build, or contribute code through a private Draft. ChimpVibe hosts the games; members submit code for the owner to review. **Submitting does not publish or deploy a game.**
 
-Claude Code, Cursor, and Codex install the same [`plugin/`](plugin) directory. Gemini CLI installs this repository and follows [`skills/`](skills) back to that same directory. The skills in [`plugin/skills/`](plugin/skills) are the shared instructions. Each client adds only its manifest, marketplace entry, and MCP settings, rendered from [`shared/`](shared) by [`scripts/platforms.mjs`](scripts/platforms.mjs). To support another client, add an adapter there and run `node scripts/render-plugins.mjs`. Leave the skill text in `plugin/skills/`.
+Claude Code, Cursor, and Codex install the same [`plugin/`](plugin) directory. Gemini CLI installs this repository and follows [`skills/`](skills) back to that same directory. GitHub Copilot installs [`copilot/`](copilot), whose skills are copied from that directory. The skills in [`plugin/skills/`](plugin/skills) are the shared instructions. Each client adds only its manifest, marketplace entry, and MCP settings, rendered from [`shared/`](shared) by [`scripts/platforms.mjs`](scripts/platforms.mjs). To support another client, add an adapter there and run `node scripts/render-plugins.mjs`. Leave the skill text in `plugin/skills/`.
 
 ## Connect
 
@@ -54,6 +54,25 @@ gemini extensions install https://github.com/burhama/chimpvibe-kit
 
 The installer asks for the member token from [chimpvibe.dev/join](https://chimpvibe.dev/join) and stores it in the system keychain. Change it later with `gemini extensions config chimpvibe`. From a checkout you are editing, `gemini extensions link .` loads that checkout instead. [`skills/`](skills) points at the shared skills. The extension connects to `https://chimpvibe.dev/mcp` and does not run a local server. Use either this extension or the direct MCP connection from `/join`, not both.
 
+### GitHub Copilot
+
+GitHub Copilot in Visual Studio Code, Copilot CLI, and the Copilot app install this from [`.github/plugin/marketplace.json`](.github/plugin/marketplace.json). The plugin directory is [`copilot/`](copilot). Visual Studio Code reads that marketplace file before the Claude one.
+
+In Visual Studio Code, add this repository under `chat.plugins.marketplaces`, then install **chimpvibe** from Extensions with `@agentPlugins`:
+
+```json
+"chat.plugins.marketplaces": ["burhama/chimpvibe-kit"]
+```
+
+In Copilot CLI:
+
+```sh
+copilot plugin marketplace add burhama/chimpvibe-kit
+copilot plugin install chimpvibe@chimpvibe-kit
+```
+
+Set `COPILOT_MCP_CHIMPVIBE_MEMBER` to the member token from [chimpvibe.dev/join](https://chimpvibe.dev/join). In Copilot CLI, export it in the environment that launches Copilot. For the Copilot cloud agent, add an Agents secret with that exact name. [`copilot/.mcp.json`](copilot/.mcp.json) sends it as `Authorization: Bearer ${COPILOT_MCP_CHIMPVIBE_MEMBER}` to `https://chimpvibe.dev/mcp`. It does not run a local server. Use either this plugin or the direct MCP connection from `/join`, not both.
+
 ## One tag, three doors
 
 An accepted build has a tag like `chimpvibe:<slug>#<n>`. Paste it to your agent; the [`tag` skill](plugin/skills/tag/SKILL.md) calls `chimpvibe_resolve`, offers Install / Ask / Modify, and follows the returned actions. A tag identifies one build, **not necessarily the build now serving players**.
@@ -81,11 +100,12 @@ A submission is not a serving revision. The owner decides whether to accept/depl
 
 - `shared/plugin-meta.json` and `shared/connection.json`: plugin identity and the hosted MCP connection. These are the records a new client adapter reads.
 - `scripts/platforms.mjs` and `scripts/render-plugins.mjs`: render each client's manifest, marketplace entry, and MCP config. `node scripts/render-plugins.mjs --check` fails if a generated file drifts.
-- `plugin/skills/`: tag and contribute skills, one copy for every client.
+- `plugin/skills/`: tag and contribute skills. This is the authored copy.
 - `plugin/.claude-plugin/` and `plugin/.mcp.json`: Claude Code manifest and token header (`${user_config.token}`).
 - `plugin/.cursor-plugin/` and `plugin/mcp.json`: Cursor manifest and token header (`${CHIMPVIBE_TOKEN}`).
 - `.agents/plugins/marketplace.json` and `plugin/.codex-plugin/`: Codex marketplace and manifest. Codex reads `CHIMPVIBE_TOKEN` from its environment for the MCP bearer token.
 - `gemini-extension.json` and `skills/`: Gemini CLI extension. Install prompts for the member token and stores it as `CHIMPVIBE_MEMBER`. `skills/` links to `plugin/skills/`.
+- `.github/plugin/marketplace.json` and `copilot/`: GitHub Copilot marketplace and plugin. Copilot reads `COPILOT_MCP_CHIMPVIBE_MEMBER`. `copilot/skills/` is generated from `plugin/skills/`.
 - `scripts/check-secrets.mjs`: scan the checkout for secret-shaped content.
 - `art/banner.png`: homepage banner.
 

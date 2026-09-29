@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // Write each client plugin's manifest, marketplace entry, and MCP config
-// from shared/. Skills are not copied; they already live in plugin/skills/.
+// from shared/. Skill text is authored in plugin/skills/. Gemini links to
+// that directory; Copilot receives a copy because its install directory is separate.
 //
 //   node scripts/render-plugins.mjs           write the client files
 //   node scripts/render-plugins.mjs --check   exit 1 if a client file drifted
 
-import { lstatSync, mkdirSync, readFileSync, readlinkSync, symlinkSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { loadShared, renderFiles, renderLinks } from './platforms.mjs';
+import { cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
+import { loadShared, renderCopies, renderFiles, renderLinks } from './platforms.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const check = process.argv.includes('--check');
@@ -45,6 +46,36 @@ for (const [from, to] of renderLinks()) {
     continue;
   }
   symlinkSync(to, path, 'dir');
+}
+
+function listFiles(dir, base = dir) {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...listFiles(path, base));
+    else if (entry.isFile()) out.push(relative(base, path));
+  }
+  return out.sort();
+}
+
+for (const [from, to] of renderCopies()) {
+  const src = resolve(root, from);
+  const dest = resolve(root, to);
+  const srcFiles = listFiles(src);
+  let same = true;
+  try {
+    const destFiles = listFiles(dest);
+    same = srcFiles.length === destFiles.length && srcFiles.every((rel, i) => rel === destFiles[i] && readFileSync(join(src, rel), 'utf8') === readFileSync(join(dest, rel), 'utf8'));
+  } catch {
+    same = false;
+  }
+  if (same) continue;
+  if (check) {
+    drifted.push(`${to} copy of ${from}`);
+    continue;
+  }
+  rmSync(dest, { recursive: true, force: true });
+  cpSync(src, dest, { recursive: true });
 }
 
 if (drifted.length) {

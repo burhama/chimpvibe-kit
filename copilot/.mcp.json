@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "chimpvibe": {
+      "type": "http",
+      "url": "https://chimpvibe.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer ${COPILOT_MCP_CHIMPVIBE_MEMBER}"
+      },
+      "tools": [
+        "*"
+      ]
+    }
+  }
+}

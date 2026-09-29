@@ -80,7 +80,7 @@ test('marketplace and plugin metadata agree on a release and optional plugin set
   assert.match(readme, /claude plugin install chimpvibe@chimpvibe-kit --config "token=YOUR_TOKEN"/);
 });
 
-test('Claude, Cursor, Codex, and Gemini install one skill package and one hosted connection', async () => {
+test('Claude, Cursor, Codex, Gemini, and Copilot install one skill package and one hosted connection', async () => {
   const { spawnSync } = await import('node:child_process');
   const meta = JSON.parse(read('shared/plugin-meta.json'));
   const connection = JSON.parse(read('shared/connection.json'));
@@ -128,6 +128,23 @@ test('Claude, Cursor, Codex, and Gemini install one skill package and one hosted
   assert.equal(readlinkSync(resolve(root, 'skills')), 'plugin/skills');
   assert.match(readme, /CHIMPVIBE_TOKEN/);
   assert.match(readme, /gemini extensions install https:\/\/github.com\/burhama\/chimpvibe-kit/);
+  const copilot = JSON.parse(read('copilot/plugin.json'));
+  const copilotMcp = JSON.parse(read('copilot/.mcp.json'));
+  const copilotMarketplace = JSON.parse(read('.github/plugin/marketplace.json'));
+  assert.equal(copilot.name, meta.name);
+  assert.equal(copilot.version, claudePlugin.version);
+  assert.equal(copilot.skills, 'skills/');
+  assert.equal(copilot.mcpServers, '.mcp.json');
+  assert.equal(copilot.$schema, undefined);
+  assert.equal(copilotMcp.mcpServers[connection.serverName].type, connection.transport);
+  assert.equal(copilotMcp.mcpServers[connection.serverName].url, connection.url);
+  assert.equal(copilotMcp.mcpServers.chimpvibe.headers.Authorization, `Bearer \${${connection.token.copilotKey}}`);
+  assert.equal(connection.token.copilotKey.startsWith('COPILOT_MCP_'), true);
+  assert.equal(copilotMarketplace.plugins[0].name, meta.name);
+  assert.equal(copilotMarketplace.plugins[0].source, './copilot');
+  assert.equal(read('copilot/skills/tag/SKILL.md'), tag);
+  assert.equal(read('copilot/skills/contribute/SKILL.md'), contribute);
+  assert.match(readme, /copilot plugin marketplace add burhama\/chimpvibe-kit/);
   assert.match(readme, /scripts\/platforms\.mjs/);
 
   const check = spawnSync(process.execPath, ['scripts/render-plugins.mjs', '--check'], { cwd: root, encoding: 'utf8' });

@@ -5,7 +5,8 @@
 // entry, and MCP config from those records. Claude Code, Cursor, and Codex
 // install the plugin/ directory, so they share the skill files directly.
 // Gemini CLI installs the repository root, so its adapter also links skills/
-// at that root to plugin/skills/.
+// at that root to plugin/skills/. GitHub Copilot installs its own directory,
+// so that adapter copies plugin/skills/ into copilot/skills/.
 //
 // To add a client:
 // 1. Append an adapter to `platforms`. Read only `meta` and `connection`;
@@ -193,11 +194,55 @@ function geminiFiles({ meta, connection }) {
   ];
 }
 
+function copilotFiles({ meta, connection }) {
+  const token = connection.token;
+  // Copilot cloud agent only substitutes secrets whose names start with COPILOT_MCP_.
+  return [
+    ['.github/plugin/marketplace.json', {
+      name: meta.marketplace,
+      owner: { name: meta.author.name },
+      metadata: {
+        description: meta.marketplaceDescription,
+        version: meta.version,
+      },
+      plugins: [{
+        name: meta.name,
+        description: meta.pluginSummary,
+        version: meta.version,
+        source: './copilot',
+      }],
+    }],
+    ['copilot/plugin.json', {
+      name: meta.name,
+      description: meta.description,
+      version: meta.version,
+      author: { name: meta.author.name, url: meta.author.url },
+      homepage: meta.homepage,
+      repository: meta.repository,
+      license: meta.license,
+      keywords: meta.keywords,
+      skills: 'skills/',
+      mcpServers: '.mcp.json',
+    }],
+    ['copilot/.mcp.json', {
+      mcpServers: {
+        [connection.serverName]: {
+          type: connection.transport,
+          url: connection.url,
+          headers: authorizationHeader(`\${${token.copilotKey}}`),
+          tools: ['*'],
+        },
+      },
+    }],
+  ];
+}
+
 export const platforms = [
   { id: 'claude', files: claudeFiles },
   { id: 'cursor', files: cursorFiles },
   { id: 'codex', files: codexFiles },
   { id: 'gemini', files: geminiFiles, links: [['skills', 'plugin/skills']] },
+  { id: 'copilot', files: copilotFiles, copies: [['plugin/skills', 'copilot/skills']] },
 ];
 
 export function renderFiles(shared) {
@@ -206,4 +251,8 @@ export function renderFiles(shared) {
 
 export function renderLinks() {
   return platforms.flatMap((platform) => platform.links ?? []);
+}
+
+export function renderCopies() {
+  return platforms.flatMap((platform) => platform.copies ?? []);
 }
