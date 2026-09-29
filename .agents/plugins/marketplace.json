@@ -1,0 +1,20 @@
+{
+  "name": "chimpvibe-kit",
+  "interface": {
+    "displayName": "ChimpVibe"
+  },
+  "plugins": [
+    {
+      "name": "chimpvibe",
+      "source": {
+        "source": "local",
+        "path": "./plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

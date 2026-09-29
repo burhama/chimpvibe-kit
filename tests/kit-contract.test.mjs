@@ -80,7 +80,7 @@ test('marketplace and plugin metadata agree on a release and optional plugin set
   assert.match(readme, /claude plugin install chimpvibe@chimpvibe-kit --config "token=YOUR_TOKEN"/);
 });
 
-test('Claude and Cursor install one skill package and one hosted connection', async () => {
+test('Claude, Cursor, and Codex install one skill package and one hosted connection', async () => {
   const { spawnSync } = await import('node:child_process');
   const meta = JSON.parse(read('shared/plugin-meta.json'));
   const connection = JSON.parse(read('shared/connection.json'));
@@ -89,6 +89,8 @@ test('Claude and Cursor install one skill package and one hosted connection', as
   const cursorPlugin = JSON.parse(read('plugin/.cursor-plugin/plugin.json'));
   const cursorMarketplace = JSON.parse(read('.cursor-plugin/marketplace.json'));
   const claudePlugin = JSON.parse(read('plugin/.claude-plugin/plugin.json'));
+  const codexPlugin = JSON.parse(read('plugin/.codex-plugin/plugin.json'));
+  const codexMarketplace = JSON.parse(read('.agents/plugins/marketplace.json'));
 
   for (const mcp of [claudeMcp, cursorMcp]) {
     assert.equal(mcp.mcpServers[connection.serverName].type, connection.transport);
@@ -105,6 +107,15 @@ test('Claude and Cursor install one skill package and one hosted connection', as
   assert.equal(cursorMarketplace.plugins[0].name, meta.name);
   assert.equal(cursorMarketplace.plugins[0].source, 'plugin');
   assert.deepEqual(Object.keys(cursorMarketplace.plugins[0]).sort(), ['description', 'name', 'source']);
+  assert.equal(codexPlugin.name, meta.name);
+  assert.equal(codexPlugin.version, claudePlugin.version);
+  assert.equal(codexPlugin.skills, './skills/');
+  assert.equal(codexPlugin.mcpServers[connection.serverName].type, connection.transport);
+  assert.equal(codexPlugin.mcpServers[connection.serverName].url, connection.url);
+  assert.equal(codexPlugin.mcpServers[connection.serverName].bearer_token_env_var, connection.token.codexKey);
+  assert.equal(codexMarketplace.plugins[0].name, meta.name);
+  assert.equal(codexMarketplace.plugins[0].source.path, './plugin');
+  assert.deepEqual(codexMarketplace.plugins[0].policy, { installation: 'AVAILABLE', authentication: 'ON_INSTALL' });
   assert.match(readme, /CHIMPVIBE_TOKEN/);
   assert.match(readme, /scripts\/platforms\.mjs/);
 

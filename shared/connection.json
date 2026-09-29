@@ -6,6 +6,7 @@
     "title": "ChimpVibe member token",
     "claudeKey": "token",
     "cursorKey": "CHIMPVIBE_TOKEN",
+    "codexKey": "CHIMPVIBE_TOKEN",
     "descriptions": {
       "claude": "The token you minted at https://chimpvibe.dev/join (shown once). It is yours alone; it never leaves your machine except as the Authorization header to chimpvibe.dev. Stored in your Claude Code settings like any `claude mcp add --header` token.",
       "cursor": "The token you minted at https://chimpvibe.dev/join (shown once). It is yours alone; it never leaves your machine except as the Authorization header to chimpvibe.dev. Set it in Cursor on the plugin's Configure page. Do not paste it into chat."

@@ -2,7 +2,7 @@
 //
 // Skills live once in plugin/skills/. Identity and the hosted MCP connection
 // live in shared/. This module renders each client's manifest, marketplace
-// entry, and MCP config from those records. Claude Code and Cursor both
+// entry, and MCP config from those records. Claude Code, Cursor, and Codex
 // install the plugin/ directory, so they share the skill files directly.
 //
 // To add a client:
@@ -120,9 +120,56 @@ function cursorFiles({ meta, connection }) {
   ];
 }
 
+function codexFiles({ meta, connection }) {
+  return [
+    ['.agents/plugins/marketplace.json', {
+      name: meta.marketplace,
+      interface: { displayName: meta.displayName },
+      plugins: [{
+        name: meta.name,
+        source: { source: 'local', path: './plugin' },
+        policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+        category: 'Developer Tools',
+      }],
+    }],
+    ['plugin/.codex-plugin/plugin.json', {
+      name: meta.name,
+      description: meta.description,
+      version: meta.version,
+      author: { name: meta.author.name, url: meta.author.url },
+      homepage: meta.homepage,
+      repository: meta.repository,
+      license: meta.license,
+      keywords: meta.keywords,
+      skills: './skills/',
+      mcpServers: {
+        [connection.serverName]: {
+          type: connection.transport,
+          url: connection.url,
+          bearer_token_env_var: connection.token.codexKey,
+        },
+      },
+      interface: {
+        displayName: meta.displayName,
+        shortDescription: meta.marketplaceDescription,
+        longDescription: meta.pluginSummary,
+        developerName: meta.author.name,
+        category: 'Developer Tools',
+        capabilities: ['Interactive', 'Write'],
+        websiteURL: meta.homepage,
+        defaultPrompt: [
+          'Resolve a ChimpVibe tag and explain its available actions.',
+          'Use ChimpVibe to contribute to an admitted native game.',
+        ],
+      },
+    }],
+  ];
+}
+
 export const platforms = [
   { id: 'claude', files: claudeFiles },
   { id: 'cursor', files: cursorFiles },
+  { id: 'codex', files: codexFiles },
 ];
 
 export function renderFiles(shared) {

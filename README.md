@@ -6,9 +6,11 @@
 
 Plugins for [ChimpVibe](https://chimpvibe.dev): resolve a game's tag, install or ask about its exact build, or contribute code through a private Draft. ChimpVibe hosts the games; members submit code for the owner to review. **Submitting does not publish or deploy a game.**
 
-Claude Code and Cursor install the same [`plugin/`](plugin) directory. The skills in [`plugin/skills/`](plugin/skills) are the shared instructions. Each client adds only a manifest and an MCP config, rendered from [`shared/`](shared) by [`scripts/platforms.mjs`](scripts/platforms.mjs). To support another client, add an adapter there and run `node scripts/render-plugins.mjs`. Leave the skill text in `plugin/skills/`.
+Claude Code, Cursor, and Codex install the same [`plugin/`](plugin) directory. The skills in [`plugin/skills/`](plugin/skills) are the shared instructions. Each client adds only its manifest, marketplace entry, and MCP settings, rendered from [`shared/`](shared) by [`scripts/platforms.mjs`](scripts/platforms.mjs). To support another client, add an adapter there and run `node scripts/render-plugins.mjs`. Leave the skill text in `plugin/skills/`.
 
 ## Connect
+
+### Claude
 
 Mint your own member token at [chimpvibe.dev/join](https://chimpvibe.dev/join). The page gives a direct HTTP MCP setup command for Claude Code and a configuration example for other MCP clients. Keep the token private: the site shows it once. Ask your agent to read the live `chimpvibe_guide` and `tools/list` before authoring; which capabilities are advertised depends on the serving deployment.
 
@@ -20,6 +22,17 @@ claude plugin install chimpvibe@chimpvibe-kit --config "token=YOUR_TOKEN"
 ```
 
 Supply your own token in place of the placeholder without committing it to a repository or pasting it in chat. If already installed, use `claude plugin update chimpvibe@chimpvibe-kit`. The plugin's [`plugin/.mcp.json`](plugin/.mcp.json) connects to `https://chimpvibe.dev/mcp` with that token in the Authorization header; it does **not** run or bundle the site server. The canonical server source lives in ChimpVibe's `site/mcp.mjs`. You need either the plugin connection or the direct MCP connection from `/join`, not both.
+
+### Codex
+
+Codex uses the same plugin directory through [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json). Add this repository as a marketplace, then install the plugin:
+
+```sh
+codex plugin marketplace add burhama/chimpvibe-kit
+codex plugin add chimpvibe@chimpvibe-kit
+```
+
+Set `CHIMPVIBE_TOKEN` in the environment that launches Codex, using your member token from [chimpvibe.dev/join](https://chimpvibe.dev/join). Keep the token out of the repository and chat. Start a new Codex session after installation. [`plugin/.codex-plugin/plugin.json`](plugin/.codex-plugin/plugin.json) points at the shared skills and connects to the hosted MCP with `bearer_token_env_var`; it does not bundle a server. Use either this plugin or the direct MCP connection from `/join`, not both.
 
 ### Cursor
 
@@ -61,6 +74,7 @@ A submission is not a serving revision. The owner decides whether to accept/depl
 - `plugin/skills/`: tag and contribute skills, one copy for every client.
 - `plugin/.claude-plugin/` and `plugin/.mcp.json`: Claude Code manifest and token header (`${user_config.token}`).
 - `plugin/.cursor-plugin/` and `plugin/mcp.json`: Cursor manifest and token header (`${CHIMPVIBE_TOKEN}`).
+- `.agents/plugins/marketplace.json` and `plugin/.codex-plugin/`: Codex marketplace and manifest. Codex reads `CHIMPVIBE_TOKEN` from its environment for the MCP bearer token.
 - `scripts/check-secrets.mjs`: scan the checkout for secret-shaped content.
 - `art/banner.png`: homepage banner.
 
