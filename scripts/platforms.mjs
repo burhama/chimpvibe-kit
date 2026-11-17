@@ -27,12 +27,7 @@ export function loadShared(root) {
   };
 }
 
-function authorizationHeader(placeholder) {
-  return { Authorization: `Bearer ${placeholder}` };
-}
-
 function claudeFiles({ meta, connection }) {
-  const token = connection.token;
   return [
     ['.claude-plugin/marketplace.json', {
       name: meta.marketplace,
@@ -52,21 +47,12 @@ function claudeFiles({ meta, connection }) {
       homepage: meta.homepage,
       repository: meta.repository,
       license: meta.license,
-      userConfig: {
-        [token.claudeKey]: {
-          type: 'string',
-          title: token.title,
-          description: token.descriptions.claude,
-          required: true,
-        },
-      },
     }],
     ['plugin/.mcp.json', {
       mcpServers: {
         [connection.serverName]: {
           type: connection.transport,
           url: connection.url,
-          headers: authorizationHeader(`\${user_config.${token.claudeKey}}`),
         },
       },
     }],
@@ -74,7 +60,6 @@ function claudeFiles({ meta, connection }) {
 }
 
 function cursorFiles({ meta, connection }) {
-  const token = connection.token;
   // Cursor's manifest schema allows author.name only. The site URL stays on homepage.
   return [
     ['.cursor-plugin/marketplace.json', {
@@ -99,24 +84,12 @@ function cursorFiles({ meta, connection }) {
       keywords: meta.keywords,
       skills: './skills/',
       mcpServers: './mcp.json',
-      variables: {
-        type: 'object',
-        properties: {
-          [token.cursorKey]: {
-            type: 'string',
-            title: token.title,
-            description: token.descriptions.cursor,
-          },
-        },
-        required: [token.cursorKey],
-      },
     }],
     ['plugin/mcp.json', {
       mcpServers: {
         [connection.serverName]: {
           type: connection.transport,
           url: connection.url,
-          headers: authorizationHeader(`\${${token.cursorKey}}`),
         },
       },
     }],
@@ -149,7 +122,6 @@ function codexFiles({ meta, connection }) {
         [connection.serverName]: {
           type: connection.transport,
           url: connection.url,
-          bearer_token_env_var: connection.token.codexKey,
         },
       },
       interface: {
@@ -170,24 +142,15 @@ function codexFiles({ meta, connection }) {
 }
 
 function geminiFiles({ meta, connection }) {
-  const token = connection.token;
-  // Gemini redacts environment names containing TOKEN, SECRET, KEY, or AUTH
-  // before it expands MCP headers. CHIMPVIBE_MEMBER is the setting that survives.
+  // No settings and no headers: Gemini CLI finds the OAuth sign-in from the server's 401.
   return [
     ['gemini-extension.json', {
       name: meta.name,
       version: meta.version,
       description: meta.description,
-      settings: [{
-        name: token.title,
-        description: token.descriptions.gemini,
-        envVar: token.geminiKey,
-        sensitive: true,
-      }],
       mcpServers: {
         [connection.serverName]: {
           httpUrl: connection.url,
-          headers: authorizationHeader(`\${${token.geminiKey}}`),
         },
       },
     }],
@@ -195,8 +158,7 @@ function geminiFiles({ meta, connection }) {
 }
 
 function copilotFiles({ meta, connection }) {
-  const token = connection.token;
-  // Copilot cloud agent only substitutes secrets whose names start with COPILOT_MCP_.
+  // No headers: the client's own OAuth sign-in runs. The Copilot cloud agent has no OAuth for remote MCP servers.
   return [
     ['.github/plugin/marketplace.json', {
       name: meta.marketplace,
@@ -229,7 +191,6 @@ function copilotFiles({ meta, connection }) {
         [connection.serverName]: {
           type: connection.transport,
           url: connection.url,
-          headers: authorizationHeader(`\${${token.copilotKey}}`),
           tools: ['*'],
         },
       },
