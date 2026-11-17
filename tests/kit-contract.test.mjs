@@ -14,7 +14,7 @@ test('the plugin retains only the hosted MCP connection', () => {
   const config = JSON.parse(read('plugin/.mcp.json'));
   assert.equal(config.mcpServers.chimpvibe.type, 'http');
   assert.equal(config.mcpServers.chimpvibe.url, 'https://chimpvibe.dev/mcp');
-  assert.equal(config.mcpServers.chimpvibe.headers.Authorization, 'Bearer ${user_config.token}');
+  assert.equal(config.mcpServers.chimpvibe.headers, undefined);
   assert.equal(existsSync(resolve(root, 'server/mcp.mjs')), false);
   assert.equal(existsSync(resolve(root, 'scripts/sync-server.mjs')), false);
   assert.doesNotMatch(readme, /server\/mcp\.mjs.*verbatim as deployed|sync-server\.mjs/);
@@ -76,8 +76,9 @@ test('marketplace and plugin metadata agree on a release and optional plugin set
   assert.match(plugin.version, /^\d+\.\d+\.\d+$/);
   assert.equal(marketplace.plugins[0].name, plugin.name);
   assert.equal(marketplace.plugins[0].source, './plugin');
-  assert.equal(plugin.userConfig.token.required, true);
-  assert.match(readme, /claude plugin install chimpvibe@chimpvibe-kit --config "token=YOUR_TOKEN"/);
+  assert.equal(plugin.userConfig, undefined);
+  assert.match(readme, /claude plugin install chimpvibe@chimpvibe-kit\n/);
+  assert.doesNotMatch(readme, /claude plugin install [^\n]*--config/);
 });
 
 test('Claude, Cursor, Codex, Gemini, and Copilot install one skill package and one hosted connection', async () => {
@@ -96,13 +97,14 @@ test('Claude, Cursor, Codex, Gemini, and Copilot install one skill package and o
     assert.equal(mcp.mcpServers[connection.serverName].type, connection.transport);
     assert.equal(mcp.mcpServers[connection.serverName].url, connection.url);
   }
-  assert.equal(claudeMcp.mcpServers.chimpvibe.headers.Authorization, 'Bearer ${user_config.token}');
-  assert.equal(cursorMcp.mcpServers.chimpvibe.headers.Authorization, 'Bearer ${CHIMPVIBE_TOKEN}');
+  // ChimpVibe's /mcp refuses fixed tokens; every client signs in with OAuth, so no config sends a token.
+  assert.equal(claudeMcp.mcpServers.chimpvibe.headers, undefined);
+  assert.equal(cursorMcp.mcpServers.chimpvibe.headers, undefined);
   assert.equal(cursorPlugin.skills, './skills/');
   assert.equal(cursorPlugin.mcpServers, './mcp.json');
   assert.equal(cursorPlugin.version, claudePlugin.version);
   assert.equal(cursorPlugin.name, meta.name);
-  assert.deepEqual(cursorPlugin.variables.required, [connection.token.cursorKey]);
+  assert.equal(cursorPlugin.variables, undefined);
   assert.equal(cursorPlugin.author.url, undefined);
   assert.equal(cursorMarketplace.plugins[0].name, meta.name);
   assert.equal(cursorMarketplace.plugins[0].source, 'plugin');
@@ -112,7 +114,9 @@ test('Claude, Cursor, Codex, Gemini, and Copilot install one skill package and o
   assert.equal(codexPlugin.skills, './skills/');
   assert.equal(codexPlugin.mcpServers[connection.serverName].type, connection.transport);
   assert.equal(codexPlugin.mcpServers[connection.serverName].url, connection.url);
-  assert.equal(codexPlugin.mcpServers[connection.serverName].bearer_token_env_var, connection.token.codexKey);
+  assert.equal(codexPlugin.mcpServers[connection.serverName].bearer_token_env_var, undefined);
+  assert.equal(codexPlugin.mcpServers[connection.serverName].headers, undefined);
+  assert.equal(codexPlugin.mcpServers[connection.serverName].http_headers, undefined);
   assert.equal(codexMarketplace.plugins[0].name, meta.name);
   assert.equal(codexMarketplace.plugins[0].source.path, './plugin');
   assert.deepEqual(codexMarketplace.plugins[0].policy, { installation: 'AVAILABLE', authentication: 'ON_INSTALL' });
@@ -120,13 +124,12 @@ test('Claude, Cursor, Codex, Gemini, and Copilot install one skill package and o
   assert.equal(gemini.name, meta.name);
   assert.equal(gemini.version, claudePlugin.version);
   assert.equal(gemini.mcpServers[connection.serverName].httpUrl, connection.url);
-  assert.equal(gemini.mcpServers.chimpvibe.headers.Authorization, `Bearer \${${connection.token.geminiKey}}`);
-  assert.equal(gemini.settings[0].envVar, connection.token.geminiKey);
-  assert.equal(gemini.settings[0].sensitive, true);
-  assert.doesNotMatch(connection.token.geminiKey, /TOKEN|SECRET|KEY|AUTH/);
+  assert.equal(gemini.mcpServers.chimpvibe.headers, undefined);
+  assert.equal(gemini.settings, undefined);
   assert.equal(lstatSync(resolve(root, 'skills')).isSymbolicLink(), true);
   assert.equal(readlinkSync(resolve(root, 'skills')), 'plugin/skills');
-  assert.match(readme, /CHIMPVIBE_TOKEN/);
+  assert.match(readme, /Upgrading from the token setup/);
+  assert.match(readme, /Auth required/);
   assert.match(readme, /gemini extensions install https:\/\/github.com\/burhama\/chimpvibe-kit/);
   const copilot = JSON.parse(read('copilot/plugin.json'));
   const copilotMcp = JSON.parse(read('copilot/.mcp.json'));
@@ -138,8 +141,7 @@ test('Claude, Cursor, Codex, Gemini, and Copilot install one skill package and o
   assert.equal(copilot.$schema, undefined);
   assert.equal(copilotMcp.mcpServers[connection.serverName].type, connection.transport);
   assert.equal(copilotMcp.mcpServers[connection.serverName].url, connection.url);
-  assert.equal(copilotMcp.mcpServers.chimpvibe.headers.Authorization, `Bearer \${${connection.token.copilotKey}}`);
-  assert.equal(connection.token.copilotKey.startsWith('COPILOT_MCP_'), true);
+  assert.equal(copilotMcp.mcpServers.chimpvibe.headers, undefined);
   assert.equal(copilotMarketplace.plugins[0].name, meta.name);
   assert.equal(copilotMarketplace.plugins[0].source, './copilot');
   assert.equal(read('copilot/skills/tag/SKILL.md'), tag);
@@ -149,4 +151,17 @@ test('Claude, Cursor, Codex, Gemini, and Copilot install one skill package and o
 
   const check = spawnSync(process.execPath, ['scripts/render-plugins.mjs', '--check'], { cwd: root, encoding: 'utf8' });
   assert.equal(check.status, 0, check.stderr);
+});
+
+test('no config, script, or doc tells a client to send a fixed token to /mcp', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const files = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8' }).stdout.split('\n').filter((f) => /\.(json|mjs|md)$/.test(f) && f !== 'tests/kit-contract.test.mjs' && f !== 'scripts/check-secrets.mjs' && !f.endsWith('SKILL.md'));
+  assert.ok(files.length > 10);
+  for (const file of files) {
+    const text = read(file);
+    // The README names the old settings once, in its upgrade section, so it is skipped here.
+    if (file === 'README.md') continue;
+    assert.doesNotMatch(text, /bearer_token_env_var|"Authorization"\s*:|Authorization:\s*Bearer/, file);
+    assert.doesNotMatch(text, /CHIMPVIBE_TOKEN|CHIMPVIBE_MEMBER|COPILOT_MCP_CHIMPVIBE/, file);
+  }
 });
