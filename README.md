@@ -89,7 +89,7 @@ copilot plugin install chimpvibe@chimpvibe-kit
 [`copilot/.mcp.json`](copilot/.mcp.json) is only `type`, `url` (`https://chimpvibe.dev/mcp`) and `tools`. It does not run a local server. Use either this plugin or the direct MCP connection, not both.
 
 - **Visual Studio Code:** its documentation says the editor runs the OAuth flow itself and opens a browser on the first connection; it tries dynamic client registration first. Start the server and press **Allow** / sign in when asked. (Not tested by us.)
-- **Copilot CLI:** its documentation for adding servers describes only static headers (which ChimpVibe refuses) and does not document OAuth for servers you add yourself. Issue reports show it does attempt OAuth with dynamic client registration, so after install use `/mcp` and choose **Authenticate** if offered. **Unverified.**
+- **Copilot CLI:** GitHub's CLI command reference documents browser sign-in for remote servers that use OAuth (dynamic client registration; `/mcp auth <server-name>` starts a fresh sign-in). A GitHub issue (copilot-cli #1967, reported on an older 1.0.x build) says OAuth servers that come from a *plugin* never showed the sign-in prompt. If that happens, add the server yourself and sign in: `copilot mcp add --transport http chimpvibe https://chimpvibe.dev/mcp`, then `/mcp auth chimpvibe` in the CLI (and remove the plugin's copy). **Plugin sign-in is unverified.**
 - **Copilot cloud agent:** GitHub documents that the cloud agent does **not** support remote MCP servers that use OAuth. It cannot connect to ChimpVibe; use VS Code or another client above.
 
 ## Upgrading from the token setup
